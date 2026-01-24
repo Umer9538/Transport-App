@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/theme_provider.dart';
+import '../../../core/localization/locale_provider.dart';
 import '../../../core/animations/staggered_animation.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
@@ -16,6 +18,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _emailNotifications = true;
   bool _tripReminders = true;
   bool _promotionalEmails = false;
+  bool _biometricLogin = false;
   String _selectedLanguage = 'English (US)';
   String _selectedTheme = 'Light';
   String _selectedMapStyle = 'Standard';
@@ -33,6 +36,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _emailNotifications = prefs.getBool('email_notifications') ?? true;
       _tripReminders = prefs.getBool('trip_reminders') ?? true;
       _promotionalEmails = prefs.getBool('promotional_emails') ?? false;
+      _biometricLogin = prefs.getBool('biometric_login') ?? false;
       _selectedLanguage = prefs.getString('language') ?? 'English (US)';
       _selectedTheme = prefs.getString('theme') ?? 'Light';
       _selectedMapStyle = prefs.getString('map_style') ?? 'Standard';
@@ -133,25 +137,37 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               icon: Icons.lock_rounded,
               title: 'Change Password',
               subtitle: 'Update your password',
-              onTap: () => _showComingSoon('Change Password'),
+              onTap: () => _showChangePasswordSheet(),
             ),
-            _buildMenuTile(
+            _buildSwitchTile(
               icon: Icons.fingerprint_rounded,
               title: 'Biometric Login',
               subtitle: 'Use fingerprint or face ID',
-              onTap: () => _showComingSoon('Biometric Login'),
+              value: _biometricLogin,
+              onChanged: (value) {
+                setState(() => _biometricLogin = value);
+                _savePreference('biometric_login', value);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(value ? 'Biometric login enabled' : 'Biometric login disabled'),
+                    backgroundColor: AppColors.secondary,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                );
+              },
             ),
             _buildMenuTile(
               icon: Icons.shield_rounded,
               title: 'Privacy Settings',
               subtitle: 'Control your data sharing',
-              onTap: () => _showComingSoon('Privacy Settings'),
+              onTap: () => _showPrivacySettings(),
             ),
             _buildMenuTile(
               icon: Icons.history_rounded,
               title: 'Login History',
               subtitle: 'View recent account activity',
-              onTap: () => _showComingSoon('Login History'),
+              onTap: () => Navigator.pushNamed(context, '/login-history'),
             ),
 
             const SizedBox(height: 24),
@@ -205,19 +221,31 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               icon: Icons.description_rounded,
               title: 'Terms of Service',
               subtitle: 'Read our terms',
-              onTap: () => _showComingSoon('Terms of Service'),
+              onTap: () => Navigator.pushNamed(context, '/terms'),
             ),
             _buildMenuTile(
               icon: Icons.privacy_tip_rounded,
               title: 'Privacy Policy',
               subtitle: 'How we handle your data',
-              onTap: () => _showComingSoon('Privacy Policy'),
+              onTap: () => Navigator.pushNamed(context, '/privacy-policy'),
             ),
             _buildMenuTile(
               icon: Icons.star_rate_rounded,
               title: 'Rate the App',
               subtitle: 'Leave a review',
-              onTap: () => _showComingSoon('Rate the App'),
+              onTap: () => _showRateAppDialog(),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Admin
+            _buildSectionTitle('Developer'),
+            _buildMenuTile(
+              icon: Icons.admin_panel_settings_rounded,
+              title: 'Admin Panel',
+              subtitle: 'Manage trips, users & drivers',
+              onTap: () => Navigator.pushNamed(context, '/admin'),
+              iconColor: Colors.purple,
             ),
 
             const SizedBox(height: 24),
@@ -423,7 +451,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              ...['English (US)', 'العربية', 'Español', 'Français', 'हिंदी'].map((lang) {
+              ...['English (US)', 'العربية'].map((lang) {
                 return ListTile(
                   title: Text(lang),
                   trailing: lang == _selectedLanguage
@@ -432,6 +460,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   onTap: () {
                     setState(() => _selectedLanguage = lang);
                     _savePreference('language', lang);
+                    ref.read(localeProvider.notifier).setLocale(lang);
                     Navigator.pop(ctx);
                   },
                 );
@@ -488,6 +517,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   onTap: () {
                     setState(() => _selectedTheme = themes[index]);
                     _savePreference('theme', themes[index]);
+                    ref.read(themeProvider.notifier).setTheme(themes[index]);
                     Navigator.pop(ctx);
                   },
                 );
@@ -690,13 +720,397 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  void _showComingSoon(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$feature coming soon!'),
-        backgroundColor: AppColors.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+  void _showChangePasswordSheet() {
+    final currentPassController = TextEditingController();
+    final newPassController = TextEditingController();
+    final confirmPassController = TextEditingController();
+    bool obscureCurrent = true;
+    bool obscureNew = true;
+    bool obscureConfirm = true;
+    bool isSaving = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Padding(
+              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(24, 0, 24, MediaQuery.of(ctx).padding.bottom + 16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(height: 12),
+                      Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: AppColors.divider,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      const Text(
+                        'Change Password',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Enter your current password and choose a new one',
+                        style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                      ),
+                      const SizedBox(height: 24),
+                      _buildPasswordField(
+                        currentPassController,
+                        'Current Password',
+                        obscureCurrent,
+                        () => setSheetState(() => obscureCurrent = !obscureCurrent),
+                      ),
+                      const SizedBox(height: 14),
+                      _buildPasswordField(
+                        newPassController,
+                        'New Password',
+                        obscureNew,
+                        () => setSheetState(() => obscureNew = !obscureNew),
+                      ),
+                      const SizedBox(height: 14),
+                      _buildPasswordField(
+                        confirmPassController,
+                        'Confirm New Password',
+                        obscureConfirm,
+                        () => setSheetState(() => obscureConfirm = !obscureConfirm),
+                      ),
+                      const SizedBox(height: 12),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Password must be at least 8 characters with a number and special character',
+                          style: TextStyle(fontSize: 12, color: AppColors.textHint),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton(
+                          onPressed: isSaving ? null : () async {
+                            if (currentPassController.text.isEmpty ||
+                                newPassController.text.isEmpty ||
+                                confirmPassController.text.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Text('Please fill all fields'),
+                                  backgroundColor: AppColors.error,
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                              );
+                              return;
+                            }
+                            if (newPassController.text.length < 8) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Text('Password must be at least 8 characters'),
+                                  backgroundColor: AppColors.error,
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                              );
+                              return;
+                            }
+                            if (newPassController.text != confirmPassController.text) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Text('Passwords do not match'),
+                                  backgroundColor: AppColors.error,
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                              );
+                              return;
+                            }
+                            setSheetState(() => isSaving = true);
+                            await Future.delayed(const Duration(milliseconds: 800));
+                            if (ctx.mounted) {
+                              Navigator.pop(ctx);
+                            }
+                            if (mounted) {
+                              ScaffoldMessenger.of(this.context).showSnackBar(
+                                SnackBar(
+                                  content: const Text('Password changed successfully'),
+                                  backgroundColor: AppColors.secondary,
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                              );
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            elevation: 0,
+                          ),
+                          child: isSaving
+                              ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
+                              : const Text('Update Password', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildPasswordField(TextEditingController controller, String hint, bool obscure, VoidCallback toggleObscure) {
+    return TextField(
+      controller: controller,
+      obscureText: obscure,
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(color: AppColors.textHint, fontSize: 14),
+        prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppColors.textHint, size: 20),
+        suffixIcon: IconButton(
+          icon: Icon(obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded, color: AppColors.textHint, size: 20),
+          onPressed: toggleObscure,
+        ),
+        filled: true,
+        fillColor: AppColors.inputBackground,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
+    );
+  }
+
+  void _showPrivacySettings() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return _PrivacySettingsSheet(onSave: _savePreference);
+      },
+    );
+  }
+
+  void _showRateAppDialog() {
+    int selectedRating = 0;
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Text('Rate DriverApp', textAlign: TextAlign.center),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'How would you rate your experience?',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(5, (index) {
+                      return GestureDetector(
+                        onTap: () => setDialogState(() => selectedRating = index + 1),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          child: Icon(
+                            index < selectedRating ? Icons.star_rounded : Icons.star_outline_rounded,
+                            color: AppColors.warning,
+                            size: 36,
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                  if (selectedRating > 0) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      selectedRating >= 4 ? 'We\'re glad you enjoy it!' : selectedRating >= 3 ? 'Thanks for your feedback!' : 'We\'ll work to improve!',
+                      style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                    ),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Later'),
+                ),
+                TextButton(
+                  onPressed: selectedRating > 0 ? () {
+                    Navigator.pop(ctx);
+                    ScaffoldMessenger.of(this.context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Thank you for your rating!'),
+                        backgroundColor: AppColors.secondary,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    );
+                  } : null,
+                  child: const Text('Submit'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _PrivacySettingsSheet extends StatefulWidget {
+  final Future<void> Function(String key, dynamic value) onSave;
+  const _PrivacySettingsSheet({required this.onSave});
+
+  @override
+  State<_PrivacySettingsSheet> createState() => _PrivacySettingsSheetState();
+}
+
+class _PrivacySettingsSheetState extends State<_PrivacySettingsSheet> {
+  bool _shareLocation = true;
+  bool _shareAnalytics = true;
+  bool _personalizedAds = false;
+  bool _dataCollection = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPrivacySettings();
+  }
+
+  Future<void> _loadPrivacySettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _shareLocation = prefs.getBool('privacy_location') ?? true;
+      _shareAnalytics = prefs.getBool('privacy_analytics') ?? true;
+      _personalizedAds = prefs.getBool('privacy_ads') ?? false;
+      _dataCollection = prefs.getBool('privacy_data') ?? true;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 12),
+          Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: AppColors.divider,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'Privacy Settings',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Text(
+              'Control how your data is used and shared',
+              style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+            ),
+          ),
+          const SizedBox(height: 20),
+          _buildPrivacyToggle(
+            'Location Sharing',
+            'Share location with drivers during trips',
+            Icons.location_on_rounded,
+            _shareLocation,
+            (val) {
+              setState(() => _shareLocation = val);
+              widget.onSave('privacy_location', val);
+            },
+          ),
+          _buildPrivacyToggle(
+            'Analytics',
+            'Help improve the app with usage data',
+            Icons.analytics_rounded,
+            _shareAnalytics,
+            (val) {
+              setState(() => _shareAnalytics = val);
+              widget.onSave('privacy_analytics', val);
+            },
+          ),
+          _buildPrivacyToggle(
+            'Personalized Ads',
+            'See ads relevant to your interests',
+            Icons.ads_click_rounded,
+            _personalizedAds,
+            (val) {
+              setState(() => _personalizedAds = val);
+              widget.onSave('privacy_ads', val);
+            },
+          ),
+          _buildPrivacyToggle(
+            'Data Collection',
+            'Allow collection of trip patterns',
+            Icons.data_usage_rounded,
+            _dataCollection,
+            (val) {
+              setState(() => _dataCollection = val);
+              widget.onSave('privacy_data', val);
+            },
+          ),
+          SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPrivacyToggle(String title, String subtitle, IconData icon, bool value, ValueChanged<bool> onChanged) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 6),
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.textHint, size: 22),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                Text(subtitle, style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+              ],
+            ),
+          ),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeTrackColor: AppColors.primary.withValues(alpha: 0.5),
+            activeThumbColor: AppColors.primary,
+          ),
+        ],
       ),
     );
   }
