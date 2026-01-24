@@ -51,7 +51,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                   child: const Icon(Icons.edit_rounded, color: Colors.white, size: 20),
                 ),
-                onPressed: () => _showComingSoon('Edit Profile'),
+                onPressed: () => Navigator.pushNamed(context, '/personal-info'),
               ),
               const SizedBox(width: 8),
             ],
@@ -205,19 +205,19 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     icon: Icons.person_outline_rounded,
                     title: 'Personal Information',
                     subtitle: 'Update your details',
-                    onTap: () => _showComingSoon('Personal Information'),
+                    onTap: () => Navigator.pushNamed(context, '/personal-info'),
                   ),
                   _buildMenuItem(
                     icon: Icons.location_on_outlined,
                     title: 'Saved Addresses',
                     subtitle: 'Manage your locations',
-                    onTap: () => _showComingSoon('Saved Addresses'),
+                    onTap: () => Navigator.pushNamed(context, '/saved-addresses'),
                   ),
                   _buildMenuItem(
                     icon: Icons.credit_card_rounded,
                     title: 'Payment Methods',
                     subtitle: 'Manage cards and wallets',
-                    onTap: () => _showComingSoon('Payment Methods'),
+                    onTap: () => Navigator.pushNamed(context, '/payment-methods'),
                   ),
 
                   const SizedBox(height: 24),
@@ -608,17 +608,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       case DriverGender.noPreference:
         return AppColors.genderAny;
     }
-  }
-
-  void _showComingSoon(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$feature coming soon!'),
-        backgroundColor: AppColors.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
   }
 
   void _showDriverPreference() {
