@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/animations/staggered_animation.dart';
 
@@ -98,21 +99,21 @@ class SupportScreen extends StatelessWidget {
               title: 'Live Chat',
               subtitle: 'Chat with our support team',
               color: AppColors.primary,
-              onTap: () => _showComingSoon(context),
+              onTap: () => Navigator.pushNamed(context, '/live-chat'),
             ),
             _buildContactTile(
               icon: Icons.email_outlined,
               title: 'Email Support',
               subtitle: 'support@driverapp.com',
               color: AppColors.secondary,
-              onTap: () => _showComingSoon(context),
+              onTap: () => _launchEmail(context),
             ),
             _buildContactTile(
               icon: Icons.phone_outlined,
               title: 'Phone Support',
               subtitle: '+1 (800) 123-4567',
               color: Colors.orange,
-              onTap: () => _showComingSoon(context),
+              onTap: () => _launchPhone(context),
             ),
             _buildContactTile(
               icon: Icons.bug_report_outlined,
@@ -137,7 +138,7 @@ class SupportScreen extends StatelessWidget {
             icon: Icons.receipt_long_rounded,
             label: 'Trip Issue',
             color: AppColors.primary,
-            onTap: () => _showComingSoon(context),
+            onTap: () => _showTripIssueSheet(context),
           ),
         ),
         const SizedBox(width: 12),
@@ -146,7 +147,7 @@ class SupportScreen extends StatelessWidget {
             icon: Icons.payment_rounded,
             label: 'Billing',
             color: AppColors.secondary,
-            onTap: () => _showComingSoon(context),
+            onTap: () => Navigator.pushNamed(context, '/payment-methods'),
           ),
         ),
         const SizedBox(width: 12),
@@ -155,7 +156,7 @@ class SupportScreen extends StatelessWidget {
             icon: Icons.person_outline_rounded,
             label: 'Account',
             color: Colors.orange,
-            onTap: () => _showComingSoon(context),
+            onTap: () => Navigator.pushNamed(context, '/personal-info'),
           ),
         ),
       ],
@@ -312,14 +313,174 @@ class SupportScreen extends StatelessWidget {
     );
   }
 
-  void _showComingSoon(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('This feature is coming soon!'),
-        backgroundColor: AppColors.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
+  void _launchEmail(BuildContext context) async {
+    final uri = Uri(
+      scheme: 'mailto',
+      path: 'support@driverapp.com',
+      queryParameters: {'subject': 'Support Request'},
+    );
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Could not open email app'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    }
+  }
+
+  void _launchPhone(BuildContext context) async {
+    final uri = Uri(scheme: 'tel', path: '+18001234567');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Could not open phone app'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showTripIssueSheet(BuildContext context) {
+    String selectedIssue = '';
+    final issues = [
+      'Driver did not show up',
+      'Driver arrived late',
+      'Wrong route taken',
+      'Vehicle condition issue',
+      'Safety concern',
+      'Billing discrepancy',
+      'Other',
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            return Container(
+              padding: const EdgeInsets.all(24),
+              decoration: const BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: AppColors.divider,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Report Trip Issue',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Select the issue you experienced',
+                    style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                  ),
+                  const SizedBox(height: 20),
+                  ...issues.map((issue) => Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      color: selectedIssue == issue
+                          ? AppColors.primary.withValues(alpha: 0.1)
+                          : AppColors.inputBackground,
+                      borderRadius: BorderRadius.circular(12),
+                      border: selectedIssue == issue
+                          ? Border.all(color: AppColors.primary, width: 1.5)
+                          : null,
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () => setSheetState(() => selectedIssue = issue),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          child: Row(
+                            children: [
+                              Icon(
+                                selectedIssue == issue
+                                    ? Icons.radio_button_checked_rounded
+                                    : Icons.radio_button_off_rounded,
+                                color: selectedIssue == issue
+                                    ? AppColors.primary
+                                    : AppColors.textHint,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                issue,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: selectedIssue == issue
+                                      ? FontWeight.w600
+                                      : FontWeight.normal,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  )),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: selectedIssue.isEmpty
+                          ? null
+                          : () {
+                              Navigator.pop(ctx);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Text('Issue reported. We\'ll get back to you shortly.'),
+                                  backgroundColor: AppColors.secondary,
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                              );
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        disabledBackgroundColor: AppColors.divider,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: const Text('Submit Report', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
