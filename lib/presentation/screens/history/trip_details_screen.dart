@@ -83,6 +83,15 @@ class TripDetailsScreen extends StatelessWidget {
 
             const SizedBox(height: 20),
 
+            // Fare & Receipt (if completed)
+            if (trip.status == TripStatus.completed)
+              FadeAnimation(
+                delay: const Duration(milliseconds: 550),
+                child: _buildFareCard(context),
+              ),
+
+            if (trip.status == TripStatus.completed) const SizedBox(height: 20),
+
             // Rating (if completed)
             if (trip.status == TripStatus.completed)
               FadeAnimation(
@@ -508,6 +517,72 @@ class TripDetailsScreen extends StatelessWidget {
                 ],
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFareCard(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Fare',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              Text(
+                'SAR ${trip.fare?.toStringAsFixed(2) ?? '--'}',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                Navigator.pushNamed(
+                  context,
+                  '/trip-receipt',
+                  arguments: trip,
+                );
+              },
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.primary),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(Icons.receipt_long_rounded, size: 20),
+              label: const Text('View Receipt'),
+            ),
           ),
         ],
       ),
