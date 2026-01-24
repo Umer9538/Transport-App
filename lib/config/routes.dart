@@ -13,11 +13,27 @@ import '../presentation/screens/schedule/schedule_screen.dart';
 import '../presentation/screens/history/trip_history_screen.dart';
 import '../presentation/screens/history/trip_details_screen.dart';
 import '../presentation/screens/profile/profile_screen.dart';
+import '../presentation/screens/profile/personal_info_screen.dart';
+import '../presentation/screens/profile/saved_addresses_screen.dart';
+import '../presentation/screens/profile/payment_methods_screen.dart';
 import '../presentation/screens/settings/settings_screen.dart';
+import '../presentation/screens/settings/login_history_screen.dart';
+import '../presentation/screens/settings/terms_screen.dart';
+import '../presentation/screens/settings/privacy_policy_screen.dart';
+import '../presentation/screens/support/live_chat_screen.dart';
+import '../presentation/screens/common/location_picker_screen.dart';
+import '../presentation/screens/history/trip_receipt_screen.dart';
+import '../presentation/screens/referral/referral_screen.dart';
+import '../presentation/screens/offers/promo_offers_screen.dart';
 import '../presentation/screens/tracking/trip_tracking_screen.dart';
 import '../presentation/screens/notifications/notifications_screen.dart';
 import '../presentation/screens/support/support_screen.dart';
 import '../presentation/screens/rating/rate_driver_screen.dart';
+import '../presentation/screens/admin/admin_dashboard_screen.dart';
+import '../presentation/screens/admin/trip_management_screen.dart';
+import '../presentation/screens/admin/user_management_screen.dart';
+import '../presentation/screens/admin/driver_management_screen.dart';
+import '../presentation/screens/admin/analytics_screen.dart';
 import '../data/models/trip_model.dart';
 import '../core/animations/page_transitions.dart';
 
@@ -41,6 +57,22 @@ class AppRoutes {
   static const String paymentConfirmation = '/payment-confirmation';
   static const String mySubscription = '/my-subscription';
   static const String rateDriver = '/rate-driver';
+  static const String personalInfo = '/personal-info';
+  static const String savedAddresses = '/saved-addresses';
+  static const String paymentMethods = '/payment-methods';
+  static const String loginHistory = '/login-history';
+  static const String terms = '/terms';
+  static const String privacyPolicy = '/privacy-policy';
+  static const String liveChat = '/live-chat';
+  static const String locationPicker = '/location-picker';
+  static const String tripReceipt = '/trip-receipt';
+  static const String referral = '/referral';
+  static const String promoOffers = '/promo-offers';
+  static const String adminDashboard = '/admin';
+  static const String adminTrips = '/admin/trips';
+  static const String adminUsers = '/admin/users';
+  static const String adminDrivers = '/admin/drivers';
+  static const String adminAnalytics = '/admin/analytics';
 
   static Route<dynamic> generateRoute(RouteSettings routeSettings) {
     switch (routeSettings.name) {
@@ -158,6 +190,107 @@ class AppRoutes {
         return SlidePageRoute(
           page: RateDriverScreen(trip: trip),
           direction: SlideTransitionDirection.bottomToTop,
+        );
+
+      case personalInfo:
+        return SlidePageRoute(
+          page: const PersonalInfoScreen(),
+          direction: SlideTransitionDirection.rightToLeft,
+        );
+
+      case savedAddresses:
+        return SlidePageRoute(
+          page: const SavedAddressesScreen(),
+          direction: SlideTransitionDirection.rightToLeft,
+        );
+
+      case paymentMethods:
+        return SlidePageRoute(
+          page: const PaymentMethodsScreen(),
+          direction: SlideTransitionDirection.rightToLeft,
+        );
+
+      case loginHistory:
+        return SlidePageRoute(
+          page: const LoginHistoryScreen(),
+          direction: SlideTransitionDirection.rightToLeft,
+        );
+
+      case terms:
+        return SlidePageRoute(
+          page: const TermsScreen(),
+          direction: SlideTransitionDirection.rightToLeft,
+        );
+
+      case privacyPolicy:
+        return SlidePageRoute(
+          page: const PrivacyPolicyScreen(),
+          direction: SlideTransitionDirection.rightToLeft,
+        );
+
+      case liveChat:
+        return SlidePageRoute(
+          page: const LiveChatScreen(),
+          direction: SlideTransitionDirection.bottomToTop,
+        );
+
+      case locationPicker:
+        final args = routeSettings.arguments as Map<String, dynamic>?;
+        return SlidePageRoute(
+          page: LocationPickerScreen(
+            title: args?['title'],
+            initialLocation: args?['initialLocation'],
+          ),
+          direction: SlideTransitionDirection.bottomToTop,
+        );
+
+      case tripReceipt:
+        final trip = routeSettings.arguments as TripModel;
+        return SlidePageRoute(
+          page: TripReceiptScreen(trip: trip),
+          direction: SlideTransitionDirection.rightToLeft,
+        );
+
+      case referral:
+        return SlidePageRoute(
+          page: const ReferralScreen(),
+          direction: SlideTransitionDirection.rightToLeft,
+        );
+
+      case promoOffers:
+        return SlidePageRoute(
+          page: const PromoOffersScreen(),
+          direction: SlideTransitionDirection.rightToLeft,
+        );
+
+      case adminDashboard:
+        return SlidePageRoute(
+          page: const AdminDashboardScreen(),
+          direction: SlideTransitionDirection.bottomToTop,
+        );
+
+      case adminTrips:
+        return SlidePageRoute(
+          page: const TripManagementScreen(),
+          direction: SlideTransitionDirection.rightToLeft,
+        );
+
+      case adminUsers:
+        return SlidePageRoute(
+          page: const UserManagementScreen(),
+          direction: SlideTransitionDirection.rightToLeft,
+        );
+
+      case adminDrivers:
+        return SlidePageRoute(
+          page: const DriverManagementScreen(),
+          direction: SlideTransitionDirection.rightToLeft,
+        );
+
+      case adminAnalytics:
+        return SlidePageRoute(
+          page: const AnalyticsScreen(),
+          direction: SlideTransitionDirection.rightToLeft,
         );
 
       default:
