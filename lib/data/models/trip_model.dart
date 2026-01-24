@@ -27,6 +27,7 @@ class TripModel {
   final double? driverLongitude;
   final int? estimatedMinutes;
   final double? distanceKm;
+  final double? fare;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -55,6 +56,7 @@ class TripModel {
     this.driverLongitude,
     this.estimatedMinutes,
     this.distanceKm,
+    this.fare,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -98,6 +100,7 @@ class TripModel {
       driverLongitude: (data['driverLongitude'] as num?)?.toDouble(),
       estimatedMinutes: data['estimatedMinutes'],
       distanceKm: (data['distanceKm'] as num?)?.toDouble(),
+      fare: (data['fare'] as num?)?.toDouble(),
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       updatedAt: (data['updatedAt'] as Timestamp).toDate(),
     );
@@ -132,6 +135,7 @@ class TripModel {
       'driverLongitude': driverLongitude,
       'estimatedMinutes': estimatedMinutes,
       'distanceKm': distanceKm,
+      'fare': fare,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
     };
@@ -149,6 +153,12 @@ class TripModel {
       status == TripStatus.cancelled || status == TripStatus.noShow;
 
   bool get hasDriver => driverId != null && driverId!.isNotEmpty;
+
+  String get pickupAddress => pickupLocation.address;
+
+  String get dropoffAddress => dropoffLocation.address;
+
+  int get durationMinutes => estimatedMinutes ?? 0;
 
   String get formattedScheduledTime {
     final hour = scheduledTime.hour;
@@ -191,6 +201,7 @@ class TripModel {
     double? driverLongitude,
     int? estimatedMinutes,
     double? distanceKm,
+    double? fare,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -219,6 +230,7 @@ class TripModel {
       driverLongitude: driverLongitude ?? this.driverLongitude,
       estimatedMinutes: estimatedMinutes ?? this.estimatedMinutes,
       distanceKm: distanceKm ?? this.distanceKm,
+      fare: fare ?? this.fare,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

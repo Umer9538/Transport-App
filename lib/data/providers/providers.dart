@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
+import '../services/cache_service.dart';
 import '../models/user_model.dart';
 import '../models/subscription_model.dart';
 import '../models/trip_model.dart';
@@ -19,6 +20,10 @@ final authServiceProvider = Provider<AuthService>((ref) {
 
 final firestoreServiceProvider = Provider<FirestoreService>((ref) {
   return FirestoreService();
+});
+
+final cacheServiceProvider = Provider<CacheService>((ref) {
+  return CacheService();
 });
 
 // ==================== AUTH ====================
@@ -297,10 +302,15 @@ final _mockTripHistory = [
     driverId: 'driver-002',
     driverName: 'Mohammed Ali',
     vehicleNumber: 'XYZ-5678',
+    vehicleModel: 'Honda Accord',
+    vehicleColor: 'White',
     driverRating: 4.8,
     actualPickupTime: DateTime.now().subtract(const Duration(days: 1, hours: 7, minutes: 45)),
     actualDropoffTime: DateTime.now().subtract(const Duration(days: 1, hours: 7, minutes: 15)),
     rating: 5.0,
+    fare: 45.0,
+    distanceKm: 12.3,
+    estimatedMinutes: 30,
     createdAt: DateTime.now().subtract(const Duration(days: 2)),
     updatedAt: DateTime.now().subtract(const Duration(days: 1)),
   ),
@@ -316,10 +326,15 @@ final _mockTripHistory = [
     driverId: 'driver-001',
     driverName: 'Ahmed Khan',
     vehicleNumber: 'ABC-1234',
+    vehicleModel: 'Toyota Camry',
+    vehicleColor: 'Silver',
     driverRating: 4.9,
     actualPickupTime: DateTime.now().subtract(const Duration(days: 2, hours: 7, minutes: 50)),
     actualDropoffTime: DateTime.now().subtract(const Duration(days: 2, hours: 7, minutes: 20)),
     rating: 4.5,
+    fare: 62.5,
+    distanceKm: 15.7,
+    estimatedMinutes: 35,
     createdAt: DateTime.now().subtract(const Duration(days: 3)),
     updatedAt: DateTime.now().subtract(const Duration(days: 2)),
   ),
