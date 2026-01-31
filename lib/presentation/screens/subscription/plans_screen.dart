@@ -468,7 +468,7 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '\$${price.toStringAsFixed(0)}',
+                      'SAR ${price.toStringAsFixed(0)}',
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -611,7 +611,7 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
                 ),
               ),
               Text(
-                '\$${price.toStringAsFixed(0)}',
+                'SAR ${price.toStringAsFixed(0)}',
                 style: const TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,

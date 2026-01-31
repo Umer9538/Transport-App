@@ -77,7 +77,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
     NotificationItem(
       id: '6',
       title: 'Payment Received',
-      message: 'Payment of \$599 received for Standard plan subscription.',
+      message: 'Payment of SAR 599 received for Standard plan subscription.',
       type: NotificationType.subscription,
       time: DateTime.now().subtract(const Duration(days: 3)),
       isRead: true,

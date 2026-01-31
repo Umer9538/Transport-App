@@ -15,8 +15,8 @@ class LocaleNotifier extends StateNotifier<Locale?> {
   ];
 
   static const languageNames = {
-    'English (US)': 'en',
-    '\u0627\u0644\u0639\u0631\u0628\u064A\u0629': 'ar',
+    'English': 'en',
+    'العربية (السعودية)': 'ar',
   };
 
   Future<void> _loadLocale() async {

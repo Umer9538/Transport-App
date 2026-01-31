@@ -420,9 +420,9 @@ class MySubscriptionScreen extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 14),
-          _buildBillingRow('Monthly Price', '\$${subscription.finalPrice.toStringAsFixed(0)}'),
+          _buildBillingRow('Monthly Price', 'SAR ${subscription.finalPrice.toStringAsFixed(0)}'),
           if (subscription.discount > 0)
-            _buildBillingRow('Discount', '-\$${subscription.discount.toStringAsFixed(0)}'),
+            _buildBillingRow('Discount', '-SAR ${subscription.discount.toStringAsFixed(0)}'),
           const Divider(height: 20),
           _buildBillingRow(
             'Next Billing',

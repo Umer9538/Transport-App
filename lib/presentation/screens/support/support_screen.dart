@@ -111,7 +111,7 @@ class SupportScreen extends StatelessWidget {
             _buildContactTile(
               icon: Icons.phone_outlined,
               title: 'Phone Support',
-              subtitle: '+1 (800) 123-4567',
+              subtitle: '+966 11 234 5678',
               color: Colors.orange,
               onTap: () => _launchPhone(context),
             ),
@@ -336,7 +336,7 @@ class SupportScreen extends StatelessWidget {
   }
 
   void _launchPhone(BuildContext context) async {
-    final uri = Uri(scheme: 'tel', path: '+18001234567');
+    final uri = Uri(scheme: 'tel', path: '+966112345678');
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri);
     } else {

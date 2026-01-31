@@ -19,7 +19,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   final _phoneController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
-  String _countryCode = '+1';
+  String _countryCode = '+966';
 
   late AnimationController _backgroundController;
   late Animation<double> _backgroundAnimation;
@@ -451,7 +451,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 ),
               ),
               const SizedBox(height: 16),
-              ...['🇺🇸 +1', '🇬🇧 +44', '🇦🇪 +971', '🇮🇳 +91', '🇸🇦 +966'].map(
+              ...['🇸🇦 +966', '🇦🇪 +971', '🇧🇭 +973', '🇰🇼 +965', '🇶🇦 +974', '🇴🇲 +968'].map(
                 (code) => ListTile(
                   title: Text(code),
                   onTap: () {

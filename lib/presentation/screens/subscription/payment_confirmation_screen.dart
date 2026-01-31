@@ -66,7 +66,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen>
   @override
   Widget build(BuildContext context) {
     final planName = widget.arguments?['planName'] ?? 'Standard';
-    final amount = widget.arguments?['amount'] ?? '\$599';
+    final amount = widget.arguments?['amount'] ?? 'SAR 599';
     final vehicleType = widget.arguments?['vehicleType'] ?? 'Mid-Range';
 
     return Scaffold(

@@ -19,7 +19,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _tripReminders = true;
   bool _promotionalEmails = false;
   bool _biometricLogin = false;
-  String _selectedLanguage = 'English (US)';
+  String _selectedLanguage = 'English';
   String _selectedTheme = 'Light';
   String _selectedMapStyle = 'Standard';
 
@@ -37,7 +37,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       _tripReminders = prefs.getBool('trip_reminders') ?? true;
       _promotionalEmails = prefs.getBool('promotional_emails') ?? false;
       _biometricLogin = prefs.getBool('biometric_login') ?? false;
-      _selectedLanguage = prefs.getString('language') ?? 'English (US)';
+      _selectedLanguage = prefs.getString('language') ?? 'English';
       _selectedTheme = prefs.getString('theme') ?? 'Light';
       _selectedMapStyle = prefs.getString('map_style') ?? 'Standard';
     });
@@ -451,7 +451,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              ...['English (US)', 'العربية'].map((lang) {
+              ...['English', 'العربية (السعودية)'].map((lang) {
                 return ListTile(
                   title: Text(lang),
                   trailing: lang == _selectedLanguage
