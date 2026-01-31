@@ -5,6 +5,7 @@ import '../../../core/theme/app_colors.dart';
 class GreetingHeader extends StatelessWidget {
   final String userName;
   final String? profileImageUrl;
+  final VoidCallback onSearchTap;
   final VoidCallback onNotificationTap;
   final VoidCallback onProfileTap;
 
@@ -12,6 +13,7 @@ class GreetingHeader extends StatelessWidget {
     super.key,
     required this.userName,
     this.profileImageUrl,
+    required this.onSearchTap,
     required this.onNotificationTap,
     required this.onProfileTap,
   });

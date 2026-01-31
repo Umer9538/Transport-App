@@ -81,6 +81,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       data: (user) => GreetingHeader(
                         userName: user?.name ?? 'User',
                         profileImageUrl: user?.profileImageUrl,
+                        onSearchTap: () {
+                          _showSearchSheet(context);
+                        },
                         onNotificationTap: () {
                           Navigator.pushNamed(context, '/notifications');
                         },
@@ -91,6 +94,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       loading: () => const _HeaderShimmer(),
                       error: (_, __) => GreetingHeader(
                         userName: 'User',
+                        onSearchTap: () {},
                         onNotificationTap: () {},
                         onProfileTap: () {},
                       ),
@@ -448,6 +452,91 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         color: Colors.white,
         size: 28,
       ),
+    );
+  }
+
+  void _showSearchSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) {
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.85,
+          padding: const EdgeInsets.all(24),
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.divider,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Search',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'Search trips, places, settings...',
+                  prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textHint),
+                  filled: true,
+                  fillColor: AppColors.inputBackground,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                ),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'Quick Actions',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 12),
+              _buildSearchOption(Icons.calendar_today_rounded, 'My Schedule', '/schedule'),
+              _buildSearchOption(Icons.history_rounded, 'Trip History', '/history'),
+              _buildSearchOption(Icons.credit_card_rounded, 'Payment Methods', '/payment-methods'),
+              _buildSearchOption(Icons.location_on_rounded, 'Saved Addresses', '/saved-addresses'),
+              _buildSearchOption(Icons.settings_rounded, 'Settings', '/settings'),
+              _buildSearchOption(Icons.help_outline_rounded, 'Help & Support', '/support'),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSearchOption(IconData icon, String label, String route) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, color: AppColors.primary, size: 20),
+      ),
+      title: Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
+      trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.textHint),
+      contentPadding: EdgeInsets.zero,
+      onTap: () {
+        Navigator.pop(context);
+        Navigator.pushNamed(context, route);
+      },
     );
   }
 }
