@@ -451,7 +451,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 ),
               ),
               const SizedBox(height: 16),
-              ...['🇸🇦 +966', '🇦🇪 +971', '🇧🇭 +973', '🇰🇼 +965', '🇶🇦 +974', '🇴🇲 +968'].map(
+              ...['🇸🇦 +966'].map(
                 (code) => ListTile(
                   title: Text(code),
                   onTap: () {
