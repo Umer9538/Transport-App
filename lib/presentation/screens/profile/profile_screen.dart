@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/enums/enums.dart';
+import '../../../core/enums/enum_l10n.dart';
 import '../../../core/animations/staggered_animation.dart';
 import '../../../data/providers/providers.dart';
 import '../../widgets/common/shimmer_loading.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -16,6 +18,7 @@ class ProfileScreen extends ConsumerStatefulWidget {
 class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final userAsync = ref.watch(currentUserDataProvider);
     final subscriptionAsync = ref.watch(activeSubscriptionProvider);
 
@@ -136,18 +139,18 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                               color: AppColors.secondary,
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(
+                                const Icon(
                                   Icons.verified_rounded,
                                   color: Colors.white,
                                   size: 14,
                                 ),
-                                SizedBox(width: 4),
+                                const SizedBox(width: 4),
                                 Text(
-                                  'Verified',
-                                  style: TextStyle(
+                                  l.verified,
+                                  style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 12,
                                     fontWeight: FontWeight.w600,
@@ -182,55 +185,84 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                       if (subscription == null) {
                         return GestureDetector(
                           onTap: () => Navigator.pushNamed(context, '/plans'),
-                          child: _buildNoSubscriptionCard(),
+                          child: _buildNoSubscriptionCard(l),
                         );
                       }
                       return GestureDetector(
                         onTap: () => Navigator.pushNamed(context, '/my-subscription'),
-                        child: _buildSubscriptionSummary(subscription),
+                        child: _buildSubscriptionSummary(subscription, l),
                       );
                     },
                     loading: () => const ShimmerCard(height: 100),
                     error: (_, __) => GestureDetector(
                       onTap: () => Navigator.pushNamed(context, '/plans'),
-                      child: _buildNoSubscriptionCard(),
+                      child: _buildNoSubscriptionCard(l),
                     ),
                   ),
 
                   const SizedBox(height: 24),
 
                   // Menu items
-                  _buildSectionTitle('Account'),
+                  _buildSectionTitle(l.account),
                   _buildMenuItem(
                     icon: Icons.person_outline_rounded,
-                    title: 'Personal Information',
-                    subtitle: 'Update your details',
+                    title: l.personalInfo,
+                    subtitle: l.updateYourDetails,
                     onTap: () => Navigator.pushNamed(context, '/personal-info'),
                   ),
                   _buildMenuItem(
                     icon: Icons.location_on_outlined,
-                    title: 'Saved Addresses',
-                    subtitle: 'Manage your locations',
+                    title: l.savedAddresses,
+                    subtitle: l.manageYourLocations,
                     onTap: () => Navigator.pushNamed(context, '/saved-addresses'),
                   ),
                   _buildMenuItem(
                     icon: Icons.credit_card_rounded,
-                    title: 'Payment Methods',
-                    subtitle: 'Manage cards and wallets',
+                    title: l.paymentMethods,
+                    subtitle: l.manageCardsAndWallets,
                     onTap: () => Navigator.pushNamed(context, '/payment-methods'),
                   ),
 
                   const SizedBox(height: 24),
 
-                  _buildSectionTitle('Preferences'),
+                  // Become a Driver section (only show if user is not already a driver)
+                  userAsync.when(
+                    data: (user) {
+                      if (user?.role != UserRole.driver) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildSectionTitle(l.earnWithUs),
+                            _buildBecomeDriverCard(l),
+                            const SizedBox(height: 24),
+                          ],
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
+                  ),
+
+                  _buildSectionTitle(l.general),
+                  _buildMenuItem(
+                    icon: Icons.settings_rounded,
+                    title: l.settings,
+                    subtitle: l.languageThemeMore,
+                    onTap: () => Navigator.pushNamed(context, '/settings'),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  _buildSectionTitle(l.preferences),
                   userAsync.when(
                     data: (user) {
                       return Column(
                         children: [
                           _buildMenuItem(
                             icon: Icons.person_pin_rounded,
-                            title: 'Driver Preference',
-                            subtitle: user?.preferredDriverGender.displayName ?? 'No Preference',
+                            title: l.driverPreference,
+                            subtitle: user?.preferredDriverGender.localizedName(l) ?? l.noPreference,
                             onTap: () => _showDriverPreference(),
                             trailing: Container(
                               padding: const EdgeInsets.symmetric(
@@ -243,7 +275,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
-                                user?.preferredDriverGender.displayName ?? 'Any',
+                                user?.preferredDriverGender.localizedName(l) ?? l.noPreference,
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w600,
@@ -254,8 +286,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           ),
                           _buildMenuItem(
                             icon: Icons.directions_car_rounded,
-                            title: 'Vehicle Type',
-                            subtitle: user?.preferredVehicleType.displayName ?? 'Comfort',
+                            title: l.vehicleType,
+                            subtitle: user?.preferredVehicleType.localizedName(l) ?? l.comfortVehicle,
                             onTap: () => _showVehiclePreference(),
                           ),
                         ],
@@ -267,37 +299,37 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
                   const SizedBox(height: 24),
 
-                  _buildSectionTitle('Support'),
+                  _buildSectionTitle(l.support),
                   _buildMenuItem(
                     icon: Icons.help_outline_rounded,
-                    title: 'Help Center',
-                    subtitle: 'FAQs and guides',
+                    title: l.helpCenter,
+                    subtitle: l.faqsAndGuides,
                     onTap: () => Navigator.pushNamed(context, '/support'),
                   ),
                   _buildMenuItem(
                     icon: Icons.headset_mic_outlined,
-                    title: 'Contact Support',
-                    subtitle: 'Get help from our team',
+                    title: l.contactSupport,
+                    subtitle: l.getHelpFromTeam,
                     onTap: () => Navigator.pushNamed(context, '/support'),
                   ),
                   _buildMenuItem(
                     icon: Icons.bug_report_outlined,
-                    title: 'Report an Issue',
-                    subtitle: 'Help us improve',
+                    title: l.reportAnIssue,
+                    subtitle: l.helpUsImprove,
                     onTap: () => Navigator.pushNamed(context, '/support'),
                   ),
 
                   const SizedBox(height: 24),
 
                   // Sign out button
-                  _buildSignOutButton(),
+                  _buildSignOutButton(l),
 
                   const SizedBox(height: 16),
 
                   // App version
                   Center(
                     child: Text(
-                      'Version 1.0.0',
+                      '${l.version} 1.0.0',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textHint,
@@ -315,7 +347,83 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildNoSubscriptionCard() {
+  Widget _buildBecomeDriverCard(AppLocalizations l) {
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, '/driver-registration'),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              AppColors.success.withValues(alpha: 0.1),
+              AppColors.success.withValues(alpha: 0.05),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.success.withValues(alpha: 0.3)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.success.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(
+                Icons.drive_eta_rounded,
+                color: AppColors.success,
+                size: 28,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    l.becomeADriver,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    l.earnMoneyDriving,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.success,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                l.apply,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoSubscriptionCard(AppLocalizations l) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -344,22 +452,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             ),
           ),
           const SizedBox(width: 16),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'No Active Subscription',
-                  style: TextStyle(
+                  l.noActiveSubscription,
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
-                  'Subscribe to enjoy hassle-free rides',
-                  style: TextStyle(
+                  l.subscribeToEnjoy,
+                  style: const TextStyle(
                     fontSize: 13,
                     color: AppColors.textSecondary,
                   ),
@@ -377,7 +485,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildSubscriptionSummary(dynamic subscription) {
+  Widget _buildSubscriptionSummary(dynamic subscription, AppLocalizations l) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -418,9 +526,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Text(
-                  'Active',
-                  style: TextStyle(
+                child: Text(
+                  l.active,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -435,13 +543,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               _buildStatItem(
                 icon: Icons.confirmation_number_rounded,
                 value: '${subscription.remainingTrips}',
-                label: 'Trips Left',
+                label: l.tripsLeft,
               ),
               const SizedBox(width: 24),
               _buildStatItem(
                 icon: Icons.calendar_today_rounded,
                 value: '${subscription.daysRemaining}',
-                label: 'Days Left',
+                label: l.daysLeft,
               ),
             ],
           ),
@@ -565,7 +673,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  Widget _buildSignOutButton() {
+  Widget _buildSignOutButton(AppLocalizations l) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.error.withValues(alpha: 0.1),
@@ -583,9 +691,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               children: [
                 const Icon(Icons.logout_rounded, color: AppColors.error),
                 const SizedBox(width: 8),
-                const Text(
-                  'Sign Out',
-                  style: TextStyle(
+                Text(
+                  l.signOut,
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: AppColors.error,
@@ -615,6 +723,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) {
+        final l = AppLocalizations.of(context)!;
         return Container(
           decoration: const BoxDecoration(
             color: Colors.white,
@@ -633,9 +742,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              const Text(
-                'Select Driver Preference',
-                style: TextStyle(
+              Text(
+                l.selectDriverPreference,
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -651,7 +760,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                             : Icons.people_rounded,
                     color: _getGenderColor(gender),
                   ),
-                  title: Text(gender.displayName),
+                  title: Text(gender.localizedName(l)),
                   onTap: () {
                     // Update preference
                     Navigator.pop(context);
@@ -671,6 +780,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) {
+        final l = AppLocalizations.of(context)!;
         return Container(
           decoration: const BoxDecoration(
             color: Colors.white,
@@ -689,9 +799,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              const Text(
-                'Select Vehicle Type',
-                style: TextStyle(
+              Text(
+                l.selectVehicleType,
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -700,7 +810,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               ...VehicleType.values.map((vehicle) {
                 return ListTile(
                   leading: const Icon(Icons.directions_car_rounded),
-                  title: Text(vehicle.displayName),
+                  title: Text(vehicle.localizedName(l)),
                   subtitle: Text(vehicle.description),
                   trailing: Text(
                     '${vehicle.priceMultiplier}x',
@@ -724,16 +834,17 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     showDialog(
       context: context,
       builder: (context) {
+        final l = AppLocalizations.of(context)!;
         return AlertDialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Text('Sign Out'),
-          content: const Text('Are you sure you want to sign out?'),
+          title: Text(l.signOut),
+          content: Text(l.signOutConfirm),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
+              child: Text(l.cancel),
             ),
             TextButton(
               onPressed: () async {
@@ -747,9 +858,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   );
                 }
               },
-              child: const Text(
-                'Sign Out',
-                style: TextStyle(color: AppColors.error),
+              child: Text(
+                l.signOut,
+                style: const TextStyle(color: AppColors.error),
               ),
             ),
           ],

@@ -1,49 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/enums/enum_l10n.dart';
+import '../../../data/models/user_model.dart';
+import '../../../data/providers/providers.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
-class _MockUser {
-  final String name;
-  final String email;
-  final String phone;
-  final String plan;
-  final bool isActive;
-  final String joinDate;
-  final int totalTrips;
-
-  _MockUser({
-    required this.name,
-    required this.email,
-    required this.phone,
-    required this.plan,
-    required this.isActive,
-    required this.joinDate,
-    required this.totalTrips,
-  });
-}
-
-class UserManagementScreen extends StatefulWidget {
+class UserManagementScreen extends ConsumerStatefulWidget {
   const UserManagementScreen({super.key});
 
   @override
-  State<UserManagementScreen> createState() => _UserManagementScreenState();
+  ConsumerState<UserManagementScreen> createState() => _UserManagementScreenState();
 }
 
-class _UserManagementScreenState extends State<UserManagementScreen> {
+class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _filter = 'All';
 
-  final List<_MockUser> _users = [
-    _MockUser(name: 'Ahmed Khan', email: 'ahmed@email.com', phone: '+966 50 123 4567', plan: 'Premium', isActive: true, joinDate: 'Jan 2026', totalTrips: 42),
-    _MockUser(name: 'Sara Mohammed', email: 'sara@email.com', phone: '+966 55 234 5678', plan: 'VIP', isActive: true, joinDate: 'Dec 2025', totalTrips: 89),
-    _MockUser(name: 'Omar Hassan', email: 'omar@email.com', phone: '+966 50 345 6789', plan: 'Basic', isActive: true, joinDate: 'Jan 2026', totalTrips: 15),
-    _MockUser(name: 'Fatima Ali', email: 'fatima@email.com', phone: '+966 55 456 7890', plan: 'Premium', isActive: false, joinDate: 'Nov 2025', totalTrips: 67),
-    _MockUser(name: 'Khalid Ibrahim', email: 'khalid@email.com', phone: '+966 50 567 8901', plan: 'Basic', isActive: true, joinDate: 'Jan 2026', totalTrips: 8),
-    _MockUser(name: 'Nora Saleh', email: 'nora@email.com', phone: '+966 55 678 9012', plan: 'VIP', isActive: true, joinDate: 'Oct 2025', totalTrips: 120),
-    _MockUser(name: 'Youssef Mahmoud', email: 'youssef@email.com', phone: '+966 50 789 0123', plan: 'Premium', isActive: false, joinDate: 'Dec 2025', totalTrips: 34),
-  ];
-
-  List<_MockUser> get filteredUsers {
-    var list = _users;
+  List<UserModel> _applyFilters(List<UserModel> users) {
+    var list = users;
     if (_filter == 'Active') list = list.where((u) => u.isActive).toList();
     if (_filter == 'Inactive') list = list.where((u) => !u.isActive).toList();
     if (_searchController.text.isNotEmpty) {
@@ -61,6 +37,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final usersAsync = ref.watch(allUsersProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -70,52 +49,68 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'User Management',
-          style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+        title: Text(
+          l.userManagement,
+          style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (_) => setState(() {}),
-              decoration: InputDecoration(
-                hintText: 'Search users...',
-                prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textHint),
-                filled: true,
-                fillColor: AppColors.surface,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      body: usersAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.error_outline_rounded, size: 48, color: AppColors.error),
+              const SizedBox(height: 12),
+              Text('${l.error}: $error', style: TextStyle(color: AppColors.textSecondary)),
+            ],
+          ),
+        ),
+        data: (users) {
+          final filteredUsers = _applyFilters(users);
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    hintText: l.searchUsers,
+                    prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textHint),
+                    filled: true,
+                    fillColor: AppColors.surface,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  ),
+                ),
               ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              children: [
-                _buildFilterChip('All'),
-                const SizedBox(width: 8),
-                _buildFilterChip('Active'),
-                const SizedBox(width: 8),
-                _buildFilterChip('Inactive'),
-                const Spacer(),
-                Text('${filteredUsers.length} users', style: TextStyle(fontSize: 12, color: AppColors.textHint)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: ListView.builder(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              itemCount: filteredUsers.length,
-              itemBuilder: (context, index) => _buildUserCard(filteredUsers[index]),
-            ),
-          ),
-        ],
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Row(
+                  children: [
+                    _buildFilterChip('All'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('Active'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('Inactive'),
+                    const Spacer(),
+                    Text('${filteredUsers.length} ${l.users}', style: TextStyle(fontSize: 12, color: AppColors.textHint)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: ListView.builder(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: filteredUsers.length,
+                  itemBuilder: (context, index) => _buildUserCard(context, filteredUsers[index]),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -142,7 +137,11 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     );
   }
 
-  Widget _buildUserCard(_MockUser user) {
+  Widget _buildUserCard(BuildContext context, UserModel user) {
+    final l = AppLocalizations.of(context)!;
+    final joinDate = DateFormat('MMM yyyy').format(user.createdAt);
+    final planLabel = user.preferredVehicleType.localizedName(l);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(16),
@@ -158,7 +157,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 radius: 22,
                 backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                 child: Text(
-                  user.name[0],
+                  user.name.isNotEmpty ? user.name[0] : '?',
                   style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary),
                 ),
               ),
@@ -187,12 +186,12 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: _getPlanColor(user.plan).withValues(alpha: 0.1),
+                  color: _getPlanColor(planLabel).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  user.plan,
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _getPlanColor(user.plan)),
+                  planLabel,
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _getPlanColor(planLabel)),
                 ),
               ),
             ],
@@ -202,9 +201,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             children: [
               _buildInfoChip(Icons.phone_rounded, user.phone),
               const Spacer(),
-              _buildInfoChip(Icons.calendar_today_rounded, user.joinDate),
+              _buildInfoChip(Icons.calendar_today_rounded, joinDate),
               const SizedBox(width: 12),
-              _buildInfoChip(Icons.directions_car_rounded, '${user.totalTrips} trips'),
+              _buildInfoChip(Icons.directions_car_rounded, '${user.totalTrips ?? 0} ${l.trips}'),
             ],
           ),
           const SizedBox(height: 10),
@@ -218,21 +217,15 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     side: BorderSide(color: AppColors.divider),
                   ),
-                  child: const Text('Details', style: TextStyle(fontSize: 12)),
+                  child: Text(l.details, style: const TextStyle(fontSize: 12)),
                 ),
               ),
               const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton(
-                  onPressed: () {
-                    setState(() {
-                      final index = _users.indexOf(user);
-                      _users[index] = _MockUser(
-                        name: user.name, email: user.email, phone: user.phone,
-                        plan: user.plan, isActive: !user.isActive,
-                        joinDate: user.joinDate, totalTrips: user.totalTrips,
-                      );
-                    });
+                  onPressed: () async {
+                    final firestoreService = ref.read(firestoreServiceProvider);
+                    await firestoreService.toggleUserActive(user.id, !user.isActive);
                   },
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 8),
@@ -240,7 +233,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     side: BorderSide(color: user.isActive ? AppColors.error : AppColors.secondary),
                     foregroundColor: user.isActive ? AppColors.error : AppColors.secondary,
                   ),
-                  child: Text(user.isActive ? 'Deactivate' : 'Activate', style: const TextStyle(fontSize: 12)),
+                  child: Text(user.isActive ? l.deactivate : l.activate, style: const TextStyle(fontSize: 12)),
                 ),
               ),
             ],
@@ -261,11 +254,14 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     );
   }
 
-  void _showUserDetails(_MockUser user) {
+  void _showUserDetails(UserModel user) {
+    final joinDate = DateFormat('MMM yyyy').format(user.createdAt);
+
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) {
+        final l = AppLocalizations.of(ctx)!;
         return Padding(
           padding: EdgeInsets.fromLTRB(24, 24, 24, MediaQuery.of(ctx).padding.bottom + 24),
           child: Column(
@@ -274,18 +270,21 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               CircleAvatar(
                 radius: 30,
                 backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                child: Text(user.name[0], style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                child: Text(
+                  user.name.isNotEmpty ? user.name[0] : '?',
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primary),
+                ),
               ),
               const SizedBox(height: 12),
               Text(user.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
               Text(user.email, style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
               const SizedBox(height: 20),
-              _buildDetailRow('Phone', user.phone),
-              _buildDetailRow('Plan', user.plan),
-              _buildDetailRow('Status', user.isActive ? 'Active' : 'Inactive'),
-              _buildDetailRow('Joined', user.joinDate),
-              _buildDetailRow('Total Trips', '${user.totalTrips}'),
+              _buildDetailRow(l.phone, user.phone),
+              _buildDetailRow(l.plan, user.preferredVehicleType.localizedName(l)),
+              _buildDetailRow(l.status, user.isActive ? l.active : 'Inactive'),
+              _buildDetailRow(l.joined, joinDate),
+              _buildDetailRow(l.totalTrips, '${user.totalTrips ?? 0}'),
             ],
           ),
         );
@@ -307,13 +306,12 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   }
 
   Color _getPlanColor(String plan) {
-    switch (plan) {
-      case 'VIP':
-        return Colors.purple;
-      case 'Premium':
-        return Colors.orange;
-      default:
-        return AppColors.primary;
+    // Map vehicle type display names to colors
+    if (plan.contains('Luxury') || plan.contains('VIP')) {
+      return Colors.purple;
+    } else if (plan.contains('Comfort') || plan.contains('Premium')) {
+      return Colors.orange;
     }
+    return AppColors.primary;
   }
 }

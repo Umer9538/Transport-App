@@ -1,43 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/enums/enums.dart';
+import '../../../core/enums/enum_l10n.dart';
+import '../../../data/models/user_model.dart';
+import '../../../data/providers/providers.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
-class _MockDriver {
-  final String name;
-  final String phone;
-  final String vehicleNumber;
-  final String vehicleModel;
-  final double rating;
-  final int totalTrips;
-  final bool isOnline;
-  final String? currentTrip;
-
-  _MockDriver({
-    required this.name,
-    required this.phone,
-    required this.vehicleNumber,
-    required this.vehicleModel,
-    required this.rating,
-    required this.totalTrips,
-    required this.isOnline,
-    this.currentTrip,
-  });
-}
-
-class DriverManagementScreen extends StatelessWidget {
+class DriverManagementScreen extends ConsumerWidget {
   const DriverManagementScreen({super.key});
 
-  static final List<_MockDriver> _drivers = [
-    _MockDriver(name: 'Mohammed Ali', phone: '+966 50 111 2222', vehicleNumber: 'ABC-1234', vehicleModel: 'Toyota Camry 2024', rating: 4.9, totalTrips: 320, isOnline: true, currentTrip: 'Trip #T003'),
-    _MockDriver(name: 'Fahad Saleh', phone: '+966 55 333 4444', vehicleNumber: 'XYZ-5678', vehicleModel: 'Honda Accord 2023', rating: 4.8, totalTrips: 245, isOnline: true, currentTrip: 'Trip #T002'),
-    _MockDriver(name: 'Ali Rahman', phone: '+966 50 555 6666', vehicleNumber: 'DEF-9012', vehicleModel: 'Hyundai Sonata 2024', rating: 4.7, totalTrips: 180, isOnline: true),
-    _MockDriver(name: 'Hassan Mahmoud', phone: '+966 55 777 8888', vehicleNumber: 'GHI-3456', vehicleModel: 'Kia K5 2023', rating: 4.6, totalTrips: 150, isOnline: false),
-    _MockDriver(name: 'Youssef Kamal', phone: '+966 50 999 0000', vehicleNumber: 'JKL-7890', vehicleModel: 'Nissan Altima 2024', rating: 4.5, totalTrips: 95, isOnline: false),
-  ];
-
   @override
-  Widget build(BuildContext context) {
-    final onlineDrivers = _drivers.where((d) => d.isOnline).toList();
-    final offlineDrivers = _drivers.where((d) => !d.isOnline).toList();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
+    final driversAsync = ref.watch(allDriversProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -48,56 +24,78 @@ class DriverManagementScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Driver Management',
-          style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+        title: Text(
+          l.driverManagement,
+          style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
       ),
-      body: ListView(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.all(20),
-        children: [
-          // Summary
-          Row(
+      body: driversAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              _buildMiniStat('${onlineDrivers.length}', 'Online', AppColors.secondary),
-              const SizedBox(width: 10),
-              _buildMiniStat('${offlineDrivers.length}', 'Offline', AppColors.textHint),
-              const SizedBox(width: 10),
-              _buildMiniStat('${_drivers.where((d) => d.currentTrip != null).length}', 'On Trip', AppColors.primary),
+              Icon(Icons.error_outline_rounded, size: 48, color: AppColors.error),
+              const SizedBox(height: 12),
+              Text('${l.error}: $error', style: TextStyle(color: AppColors.textSecondary)),
             ],
           ),
+        ),
+        data: (drivers) {
+          final onlineDrivers = drivers.where((d) => d.driverStatus == DriverStatus.online || d.driverStatus == DriverStatus.onTrip).toList();
+          final offlineDrivers = drivers.where((d) => d.driverStatus == DriverStatus.offline || d.driverStatus == null).toList();
 
-          const SizedBox(height: 24),
+          return ListView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.all(20),
+            children: [
+              // Summary
+              Row(
+                children: [
+                  _buildMiniStat('${onlineDrivers.length}', l.online, AppColors.secondary),
+                  const SizedBox(width: 10),
+                  _buildMiniStat('${offlineDrivers.length}', l.offline, AppColors.textHint),
+                  const SizedBox(width: 10),
+                  _buildMiniStat(
+                    '${drivers.where((d) => d.driverStatus == DriverStatus.onTrip).length}',
+                    l.onTrip,
+                    AppColors.primary,
+                  ),
+                ],
+              ),
 
-          if (onlineDrivers.isNotEmpty) ...[
-            Row(
-              children: [
-                Container(width: 8, height: 8, decoration: BoxDecoration(color: AppColors.secondary, shape: BoxShape.circle)),
-                const SizedBox(width: 8),
-                const Text('Online', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 24),
+
+              if (onlineDrivers.isNotEmpty) ...[
+                Row(
+                  children: [
+                    Container(width: 8, height: 8, decoration: BoxDecoration(color: AppColors.secondary, shape: BoxShape.circle)),
+                    const SizedBox(width: 8),
+                    Text(l.online, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ...onlineDrivers.map((d) => _buildDriverCard(context, ref, d)),
               ],
-            ),
-            const SizedBox(height: 12),
-            ...onlineDrivers.map((d) => _buildDriverCard(context, d)),
-          ],
 
-          if (offlineDrivers.isNotEmpty) ...[
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Container(width: 8, height: 8, decoration: BoxDecoration(color: AppColors.textHint, shape: BoxShape.circle)),
-                const SizedBox(width: 8),
-                const Text('Offline', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+              if (offlineDrivers.isNotEmpty) ...[
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Container(width: 8, height: 8, decoration: BoxDecoration(color: AppColors.textHint, shape: BoxShape.circle)),
+                    const SizedBox(width: 8),
+                    Text(l.offline, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ...offlineDrivers.map((d) => _buildDriverCard(context, ref, d)),
               ],
-            ),
-            const SizedBox(height: 12),
-            ...offlineDrivers.map((d) => _buildDriverCard(context, d)),
-          ],
 
-          const SizedBox(height: 32),
-        ],
+              const SizedBox(height: 32),
+            ],
+          );
+        },
       ),
     );
   }
@@ -120,7 +118,10 @@ class DriverManagementScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDriverCard(BuildContext context, _MockDriver driver) {
+  Widget _buildDriverCard(BuildContext context, WidgetRef ref, UserModel driver) {
+    final l = AppLocalizations.of(context)!;
+    final isOnTrip = driver.driverStatus == DriverStatus.onTrip;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(16),
@@ -135,7 +136,10 @@ class DriverManagementScreen extends StatelessWidget {
               CircleAvatar(
                 radius: 22,
                 backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                child: Text(driver.name[0], style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                child: Text(
+                  driver.name.isNotEmpty ? driver.name[0] : '?',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.primary),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -147,22 +151,38 @@ class DriverManagementScreen extends StatelessWidget {
                       children: [
                         Icon(Icons.star_rounded, color: Colors.amber, size: 14),
                         const SizedBox(width: 2),
-                        Text('${driver.rating}', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        Text('${driver.driverRating ?? 0.0}', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                         const SizedBox(width: 8),
-                        Text('${driver.totalTrips} trips', style: TextStyle(fontSize: 12, color: AppColors.textHint)),
+                        Text('${driver.totalTrips ?? 0} ${l.trips}', style: TextStyle(fontSize: 12, color: AppColors.textHint)),
                       ],
                     ),
                   ],
                 ),
               ),
-              if (driver.currentTrip != null)
+              if (isOnTrip)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
-                  child: Text(driver.currentTrip!, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                  child: Text(l.onTrip, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                ),
+              if (driver.driverStatus != null && !isOnTrip)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: (driver.driverStatus == DriverStatus.online ? AppColors.secondary : AppColors.textHint).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    driver.driverStatus!.localizedName(l),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: driver.driverStatus == DriverStatus.online ? AppColors.secondary : AppColors.textHint,
+                    ),
+                  ),
                 ),
             ],
           ),
@@ -171,16 +191,36 @@ class DriverManagementScreen extends StatelessWidget {
             children: [
               Icon(Icons.directions_car_rounded, size: 14, color: AppColors.textHint),
               const SizedBox(width: 6),
-              Text(driver.vehicleModel, style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-              const Spacer(),
+              Expanded(
+                child: Text(driver.vehicleModel ?? '-', style: TextStyle(fontSize: 12, color: AppColors.textSecondary), overflow: TextOverflow.ellipsis),
+              ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(
                   color: AppColors.inputBackground,
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: Text(driver.vehicleNumber, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                child: Text(driver.vehiclePlate ?? '-', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
               ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(Icons.phone_rounded, size: 14, color: AppColors.textHint),
+              const SizedBox(width: 6),
+              Text(driver.phone, style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+              const Spacer(),
+              if (!driver.isActive)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(l.deactivate, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.error)),
+                ),
             ],
           ),
         ],

@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/enums/enums.dart';
+import '../../../core/enums/enum_l10n.dart';
 import '../../../data/models/address_model.dart';
 import '../../../data/providers/providers.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 class SavedAddressesScreen extends ConsumerStatefulWidget {
   const SavedAddressesScreen({super.key});
@@ -53,6 +55,7 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final userAsync = ref.watch(currentUserDataProvider);
 
     return Scaffold(
@@ -64,9 +67,9 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
           icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Saved Addresses',
-          style: TextStyle(
+        title: Text(
+          l.savedAddresses,
+          style: const TextStyle(
             color: AppColors.textPrimary,
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -79,7 +82,7 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_rounded),
-        label: const Text('Add Address', style: TextStyle(fontWeight: FontWeight.w600)),
+        label: Text(l.addAddress, style: const TextStyle(fontWeight: FontWeight.w600)),
       ),
       body: userAsync.when(
         data: (user) {
@@ -105,6 +108,7 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
   }
 
   Widget _buildEmptyState() {
+    final l = AppLocalizations.of(context)!;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -122,9 +126,9 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          const Text(
-            'No Saved Addresses',
-            style: TextStyle(
+          Text(
+            l.noSavedAddresses,
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: AppColors.textPrimary,
@@ -132,7 +136,7 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Add your frequently visited places\nfor quick trip setup',
+            l.addFrequentlyVisitedPlaces,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
@@ -145,6 +149,7 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
   }
 
   Widget _buildAddressCard(AddressModel address) {
+    final l = AppLocalizations.of(context)!;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -201,9 +206,9 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
                                 color: AppColors.primary.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(6),
                               ),
-                              child: const Text(
-                                'Default',
-                                style: TextStyle(
+                              child: Text(
+                                l.defaultLabel,
+                                style: const TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.primary,
@@ -240,34 +245,34 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
                     }
                   },
                   itemBuilder: (context) => [
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'edit',
                       child: Row(
                         children: [
-                          Icon(Icons.edit_rounded, size: 18),
-                          SizedBox(width: 10),
-                          Text('Edit'),
+                          const Icon(Icons.edit_rounded, size: 18),
+                          const SizedBox(width: 10),
+                          Text(l.edit),
                         ],
                       ),
                     ),
                     if (!address.isDefault)
-                      const PopupMenuItem(
+                      PopupMenuItem(
                         value: 'default',
                         child: Row(
                           children: [
-                            Icon(Icons.star_rounded, size: 18),
-                            SizedBox(width: 10),
-                            Text('Set as Default'),
+                            const Icon(Icons.star_rounded, size: 18),
+                            const SizedBox(width: 10),
+                            Text(l.setAsDefault),
                           ],
                         ),
                       ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'delete',
                       child: Row(
                         children: [
-                          Icon(Icons.delete_rounded, size: 18, color: AppColors.error),
-                          SizedBox(width: 10),
-                          Text('Delete', style: TextStyle(color: AppColors.error)),
+                          const Icon(Icons.delete_rounded, size: 18, color: AppColors.error),
+                          const SizedBox(width: 10),
+                          Text(l.delete, style: const TextStyle(color: AppColors.error)),
                         ],
                       ),
                     ),
@@ -281,12 +286,20 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
     );
   }
 
+  Future<void> _persistAddresses() async {
+    final user = ref.read(currentUserProvider);
+    if (user == null) return;
+    final firestoreService = ref.read(firestoreServiceProvider);
+    await firestoreService.updateSavedAddresses(user.uid, _addresses);
+  }
+
   void _setDefault(AddressModel address) {
     setState(() {
       _addresses = _addresses.map((a) {
         return a.copyWith(isDefault: a.id == address.id);
       }).toList();
     });
+    _persistAddresses();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('${address.title} set as default'),
@@ -300,34 +313,38 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
   void _showDeleteDialog(AddressModel address) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Delete Address'),
-        content: Text('Are you sure you want to delete "${address.title}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              setState(() {
-                _addresses.removeWhere((a) => a.id == address.id);
-              });
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Address deleted'),
-                  backgroundColor: AppColors.error,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-              );
-            },
-            child: const Text('Delete', style: TextStyle(color: AppColors.error)),
-          ),
-        ],
-      ),
+      builder: (ctx) {
+        final l = AppLocalizations.of(ctx)!;
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(l.deleteAddress),
+          content: Text('Are you sure you want to delete "${address.title}"?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l.cancel),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _addresses.removeWhere((a) => a.id == address.id);
+                });
+                _persistAddresses();
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(l.addressDeleted),
+                    backgroundColor: AppColors.error,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                );
+              },
+              child: Text(l.delete, style: const TextStyle(color: AppColors.error)),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -346,6 +363,7 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
+        final l = AppLocalizations.of(ctx)!;
         return StatefulBuilder(
           builder: (context, setSheetState) {
             return Container(
@@ -368,7 +386,7 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    isEditing ? 'Edit Address' : 'Add New Address',
+                    isEditing ? l.editAddress : l.addNewAddress,
                     style: const TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
@@ -383,9 +401,9 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Type selector
-                          const Text(
-                            'Address Type',
-                            style: TextStyle(
+                          Text(
+                            l.addressType,
+                            style: const TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
                               color: AppColors.textSecondary,
@@ -401,8 +419,8 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
                                     setSheetState(() => selectedType = type);
                                     if (titleController.text.isEmpty ||
                                         AddressType.values.any(
-                                            (t) => t.displayName == titleController.text)) {
-                                      titleController.text = type.displayName;
+                                            (t) => t.localizedName(l) == titleController.text)) {
+                                      titleController.text = type.localizedName(l);
                                     }
                                   },
                                   child: Container(
@@ -431,7 +449,7 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
-                                          type.displayName,
+                                          type.localizedName(l),
                                           style: TextStyle(
                                             fontSize: 12,
                                             fontWeight: isSelected
@@ -451,25 +469,25 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
                           ),
 
                           const SizedBox(height: 20),
-                          _buildSheetField(titleController, 'Label', Icons.label_rounded),
+                          _buildSheetField(titleController, l.label, Icons.label_rounded),
                           const SizedBox(height: 14),
-                          _buildSheetField(addressController, 'Street Address', Icons.location_on_rounded),
+                          _buildSheetField(addressController, l.streetAddress, Icons.location_on_rounded),
                           const SizedBox(height: 14),
-                          _buildSheetField(buildingController, 'Building Name (optional)', Icons.apartment_rounded),
+                          _buildSheetField(buildingController, l.buildingName, Icons.apartment_rounded),
                           const SizedBox(height: 14),
                           Row(
                             children: [
                               Expanded(
-                                child: _buildSheetField(floorController, 'Floor', Icons.layers_rounded),
+                                child: _buildSheetField(floorController, l.floor, Icons.layers_rounded),
                               ),
                               const SizedBox(width: 12),
                               Expanded(
-                                child: _buildSheetField(apartmentController, 'Apt/Unit', Icons.door_front_door_rounded),
+                                child: _buildSheetField(apartmentController, l.aptUnit, Icons.door_front_door_rounded),
                               ),
                             ],
                           ),
                           const SizedBox(height: 14),
-                          _buildSheetField(landmarkController, 'Landmark (optional)', Icons.place_rounded),
+                          _buildSheetField(landmarkController, l.landmark, Icons.place_rounded),
                           const SizedBox(height: 30),
                         ],
                       ),
@@ -488,7 +506,7 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
                               addressController.text.trim().isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: const Text('Label and address are required'),
+                                content: Text(l.labelAndAddressRequired),
                                 backgroundColor: AppColors.error,
                                 behavior: SnackBarBehavior.floating,
                                 shape: RoundedRectangleBorder(
@@ -525,11 +543,12 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
                               _addresses.add(newAddress);
                             }
                           });
+                          _persistAddresses();
 
                           Navigator.pop(ctx);
-                          ScaffoldMessenger.of(context).showSnackBar(
+                          ScaffoldMessenger.of(this.context).showSnackBar(
                             SnackBar(
-                              content: Text(isEditing ? 'Address updated' : 'Address added'),
+                              content: Text(isEditing ? l.addressUpdated : l.addressAdded),
                               backgroundColor: AppColors.secondary,
                               behavior: SnackBarBehavior.floating,
                               shape: RoundedRectangleBorder(
@@ -547,7 +566,7 @@ class _SavedAddressesScreenState extends ConsumerState<SavedAddressesScreen> {
                           elevation: 0,
                         ),
                         child: Text(
-                          isEditing ? 'Update Address' : 'Save Address',
+                          isEditing ? l.updateAddress : l.saveAddress,
                           style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,

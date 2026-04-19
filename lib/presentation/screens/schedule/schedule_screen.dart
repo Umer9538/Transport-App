@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/enums/enums.dart';
+import '../../../core/enums/enum_l10n.dart';
 import '../../../core/animations/fade_animation.dart';
 import '../../../data/providers/providers.dart';
 import '../../../data/models/trip_model.dart';
 import '../../widgets/common/shimmer_loading.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 class ScheduleScreen extends ConsumerStatefulWidget {
   const ScheduleScreen({super.key});
@@ -21,6 +24,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final tripsAsync = ref.watch(upcomingTripsProvider);
 
     return Scaffold(
@@ -32,9 +36,9 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'My Schedule',
-          style: TextStyle(
+        title: Text(
+          l.mySchedule,
+          style: const TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
           ),
@@ -65,7 +69,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             child: Column(
               children: [
                 _buildMonthSelector(),
-                _buildCalendar(),
+                _buildCalendar(l),
                 const SizedBox(height: 24),
               ],
             ),
@@ -99,7 +103,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                             t.scheduledTime.day == _selectedDate.day).toList();
 
                         if (dayTrips.isEmpty) {
-                          return _buildNoTrips();
+                          return _buildNoTrips(l);
                         }
 
                         return ListView.builder(
@@ -109,7 +113,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                             return FadeAnimation(
                               delay: Duration(milliseconds: 100 + (index * 50)),
                               slideOffset: const Offset(0, 0.2),
-                              child: _buildTripCard(dayTrips[index]),
+                              child: _buildTripCard(dayTrips[index], l),
                             );
                           },
                         );
@@ -118,7 +122,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                         itemCount: 2,
                         itemBuilder: (_, __) => const ShimmerTripCard(),
                       ),
-                      error: (_, __) => _buildNoTrips(),
+                      error: (_, __) => _buildNoTrips(l),
                     ),
                   ),
                 ],
@@ -171,7 +175,19 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     );
   }
 
-  Widget _buildCalendar() {
+  List<String> _localizedDayAbbreviations(AppLocalizations l) {
+    return [
+      l.monShort,
+      l.tueShort,
+      l.wedShort,
+      l.thuShort,
+      l.friShort,
+      l.satShort,
+      l.sunShort,
+    ];
+  }
+
+  Widget _buildCalendar(AppLocalizations l) {
     final daysInMonth = DateTime(
       _focusedMonth.year,
       _focusedMonth.month + 1,
@@ -190,7 +206,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
         children: [
           // Day headers
           Row(
-            children: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) {
+            children: _localizedDayAbbreviations(l).map((day) {
               return Expanded(
                 child: Center(
                   child: Text(
@@ -267,7 +283,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     );
   }
 
-  Widget _buildTripCard(TripModel trip) {
+  Widget _buildTripCard(TripModel trip, AppLocalizations l) {
     return GestureDetector(
       onTap: () {
         if (trip.isUpcoming) {
@@ -330,7 +346,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        trip.status.displayName,
+                        trip.status.localizedName(l),
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -355,23 +371,23 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                     }
                   },
                   itemBuilder: (context) => [
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'modify',
                       child: Row(
                         children: [
-                          Icon(Icons.edit_rounded, size: 20),
-                          SizedBox(width: 8),
-                          Text('Modify'),
+                          const Icon(Icons.edit_rounded, size: 20),
+                          const SizedBox(width: 8),
+                          Text(l.modify),
                         ],
                       ),
                     ),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'cancel',
                       child: Row(
                         children: [
-                          Icon(Icons.cancel_rounded, size: 20, color: AppColors.error),
-                          SizedBox(width: 8),
-                          Text('Cancel', style: TextStyle(color: AppColors.error)),
+                          const Icon(Icons.cancel_rounded, size: 20, color: AppColors.error),
+                          const SizedBox(width: 8),
+                          Text(l.cancel, style: const TextStyle(color: AppColors.error)),
                         ],
                       ),
                     ),
@@ -441,7 +457,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     );
   }
 
-  Widget _buildNoTrips() {
+  Widget _buildNoTrips(AppLocalizations l) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -459,9 +475,9 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'No trips scheduled',
-            style: TextStyle(
+          Text(
+            l.noTripsScheduled,
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
@@ -469,7 +485,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'You have no trips on this day',
+            l.youHaveNoTripsToday,
             style: TextStyle(
               fontSize: 14,
               color: AppColors.textSecondary,
@@ -483,31 +499,51 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
   void _showCancelDialog(TripModel trip) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Cancel Trip'),
-        content: Text('Are you sure you want to cancel the trip at ${trip.formattedScheduledTime}?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Keep Trip'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Trip cancelled'),
-                  backgroundColor: AppColors.error,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-              );
-            },
-            child: const Text('Cancel Trip', style: TextStyle(color: AppColors.error)),
-          ),
-        ],
-      ),
+      builder: (ctx) {
+        final l = AppLocalizations.of(ctx)!;
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(l.cancelTrip),
+          content: Text(l.cancelTripAtTime(trip.formattedScheduledTime)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l.keepTrip),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                try {
+                  final firestoreService = ref.read(firestoreServiceProvider);
+                  await firestoreService.cancelTrip(trip.id);
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(l.tripCancelled),
+                        backgroundColor: AppColors.error,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error: ${e.toString()}'),
+                        backgroundColor: AppColors.error,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    );
+                  }
+                }
+              },
+              child: Text(l.cancelTrip, style: const TextStyle(color: AppColors.error)),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -524,6 +560,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
+            final l = AppLocalizations.of(context)!;
             return Container(
               padding: const EdgeInsets.all(24),
               decoration: const BoxDecoration(
@@ -545,13 +582,13 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  const Text(
-                    'Modify Trip',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  Text(
+                    l.modifyTrip,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Change pickup time for ${DateFormat('EEEE, MMM d').format(trip.scheduledTime)}',
+                    l.changePickupTime(DateFormat('EEEE, MMM d').format(trip.scheduledTime)),
                     style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: 24),
@@ -610,9 +647,9 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                   const SizedBox(height: 20),
 
                   // Time picker button
-                  const Text(
-                    'Pickup Time',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  Text(
+                    l.pickupTimeLabel,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                   ),
                   const SizedBox(height: 8),
                   GestureDetector(
@@ -653,7 +690,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                           ),
                           const Spacer(),
                           Text(
-                            'Tap to change',
+                            l.tapToChange,
                             style: TextStyle(fontSize: 12, color: AppColors.textHint),
                           ),
                         ],
@@ -667,25 +704,51 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         Navigator.pop(ctx);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Trip updated to ${selectedTime.format(context)}'),
-                            backgroundColor: AppColors.secondary,
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                        );
+                        try {
+                          final firestoreService = ref.read(firestoreServiceProvider);
+                          final newScheduledTime = DateTime(
+                            trip.scheduledTime.year,
+                            trip.scheduledTime.month,
+                            trip.scheduledTime.day,
+                            selectedTime.hour,
+                            selectedTime.minute,
+                          );
+                          await firestoreService.updateTrip(trip.id, {
+                            'scheduledTime': Timestamp.fromDate(newScheduledTime),
+                          });
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(l.tripUpdated(selectedTime.format(context))),
+                                backgroundColor: AppColors.secondary,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Error: ${e.toString()}'),
+                                backgroundColor: AppColors.error,
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                            );
+                          }
+                        }
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
-                      child: const Text(
-                        'Confirm Changes',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15),
+                      child: Text(
+                        l.confirmChanges,
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 15),
                       ),
                     ),
                   ),

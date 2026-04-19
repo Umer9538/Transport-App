@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/animations/fade_animation.dart';
 import '../../../data/providers/providers.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../widgets/home/greeting_header.dart';
 import '../../widgets/home/next_trip_card.dart';
 import '../../widgets/home/subscription_card.dart';
@@ -46,6 +47,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final userAsync = ref.watch(currentUserDataProvider);
     final subscriptionAsync = ref.watch(activeSubscriptionProvider);
     final upcomingTripsAsync = ref.watch(upcomingTripsProvider);
@@ -123,9 +125,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       FadeAnimation(
                         delay: const Duration(milliseconds: 100),
                         slideOffset: const Offset(0, 0.3),
-                        child: const Text(
-                          'Next Trip',
-                          style: TextStyle(
+                        child: Text(
+                          l.nextTrip,
+                          style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                             color: AppColors.textPrimary,
@@ -154,9 +156,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       FadeAnimation(
                         delay: const Duration(milliseconds: 300),
                         slideOffset: const Offset(0, 0.3),
-                        child: const Text(
-                          'My Subscription',
-                          style: TextStyle(
+                        child: Text(
+                          l.mySubscription,
+                          style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                             color: AppColors.textPrimary,
@@ -185,9 +187,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       FadeAnimation(
                         delay: const Duration(milliseconds: 500),
                         slideOffset: const Offset(0, 0.3),
-                        child: const Text(
-                          'Quick Actions',
-                          style: TextStyle(
+                        child: Text(
+                          l.quickActions,
+                          style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                             color: AppColors.textPrimary,
@@ -199,6 +201,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                         delay: const Duration(milliseconds: 600),
                         slideOffset: const Offset(0, 0.3),
                         child: QuickActions(
+                          scheduleLabel: l.schedule,
+                          historyLabel: l.history,
+                          supportLabel: l.support,
+                          settingsLabel: l.settings,
                           onScheduleTap: () {
                             Navigator.pushNamed(context, '/schedule');
                           },
@@ -258,9 +264,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'No upcoming trips',
-            style: TextStyle(
+          Text(
+            AppLocalizations.of(context)!.noUpcomingTrips,
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
@@ -268,7 +274,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            'Subscribe to a plan to schedule your rides',
+            AppLocalizations.of(context)!.noUpcomingTripsSubtitle,
             style: TextStyle(
               fontSize: 14,
               color: AppColors.textSecondary,
@@ -309,9 +315,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Start Your Journey',
-                    style: TextStyle(
+                  Text(
+                    AppLocalizations.of(context)!.startYourJourney,
+                    style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
@@ -319,7 +325,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Subscribe to a plan and enjoy hassle-free daily commute',
+                    AppLocalizations.of(context)!.subscribeForRides,
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.white.withValues(alpha: 0.9),
@@ -335,18 +341,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Row(
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          'View Plans',
-                          style: TextStyle(
+                          AppLocalizations.of(context)!.viewPlans,
+                          style: const TextStyle(
                             color: AppColors.primary,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        SizedBox(width: 4),
-                        Icon(
+                        const SizedBox(width: 4),
+                        const Icon(
                           Icons.arrow_forward_rounded,
                           color: AppColors.primary,
                           size: 18,
@@ -377,6 +383,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   Widget _buildBottomNavBar() {
+    final l = AppLocalizations.of(context)!;
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -394,11 +401,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildNavItem(Icons.home_rounded, 'Home', true),
-              _buildNavItem(Icons.calendar_month_rounded, 'Schedule', false),
+              _buildNavItem(Icons.home_rounded, l.home, true, route: '/'),
+              _buildNavItem(Icons.calendar_month_rounded, l.schedule, false, route: '/schedule'),
               const SizedBox(width: 60), // Space for FAB
-              _buildNavItem(Icons.history_rounded, 'History', false),
-              _buildNavItem(Icons.person_rounded, 'Profile', false),
+              _buildNavItem(Icons.history_rounded, l.history, false, route: '/history'),
+              _buildNavItem(Icons.person_rounded, l.profile, false, route: '/profile'),
             ],
           ),
         ),
@@ -406,15 +413,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
     );
   }
 
-  Widget _buildNavItem(IconData icon, String label, bool isSelected) {
+  Widget _buildNavItem(IconData icon, String label, bool isSelected, {required String route}) {
     return GestureDetector(
       onTap: () {
         // Handle navigation
-        if (label == 'Schedule') {
+        if (route == '/schedule') {
           Navigator.pushNamed(context, '/schedule');
-        } else if (label == 'History') {
+        } else if (route == '/history') {
           Navigator.pushNamed(context, '/history');
-        } else if (label == 'Profile') {
+        } else if (route == '/profile') {
           Navigator.pushNamed(context, '/profile');
         }
       },
@@ -456,6 +463,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   void _showSearchSheet(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -482,15 +490,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ),
               ),
               const SizedBox(height: 20),
-              const Text(
-                'Search',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              Text(
+                l.search,
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
               TextField(
                 autofocus: true,
                 decoration: InputDecoration(
-                  hintText: 'Search trips, places, settings...',
+                  hintText: l.searchTripsPlaces,
                   prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textHint),
                   filled: true,
                   fillColor: AppColors.inputBackground,
@@ -502,17 +510,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 ),
               ),
               const SizedBox(height: 24),
-              const Text(
-                'Quick Actions',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+              Text(
+                l.quickActions,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 12),
-              _buildSearchOption(Icons.calendar_today_rounded, 'My Schedule', '/schedule'),
-              _buildSearchOption(Icons.history_rounded, 'Trip History', '/history'),
-              _buildSearchOption(Icons.credit_card_rounded, 'Payment Methods', '/payment-methods'),
-              _buildSearchOption(Icons.location_on_rounded, 'Saved Addresses', '/saved-addresses'),
-              _buildSearchOption(Icons.settings_rounded, 'Settings', '/settings'),
-              _buildSearchOption(Icons.help_outline_rounded, 'Help & Support', '/support'),
+              _buildSearchOption(Icons.calendar_today_rounded, l.mySchedule, '/schedule'),
+              _buildSearchOption(Icons.history_rounded, l.tripHistory, '/history'),
+              _buildSearchOption(Icons.credit_card_rounded, l.paymentMethods, '/payment-methods'),
+              _buildSearchOption(Icons.location_on_rounded, l.savedAddresses, '/saved-addresses'),
+              _buildSearchOption(Icons.settings_rounded, l.settings, '/settings'),
+              _buildSearchOption(Icons.help_outline_rounded, l.support, '/support'),
             ],
           ),
         );

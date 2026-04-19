@@ -7,10 +7,9 @@ class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // TEST MODE: Set to true to bypass OTP verification for testing
-  // Set to false for production
-  static const bool testMode = true;
-  static const String testOTP = '123456'; // Any OTP works in test mode
+  // TEST MODE: Set to false for production
+  static const bool testMode = false;
+  static const String testOTP = '123456';
 
   // Get current user
   User? get currentUser => _auth.currentUser;

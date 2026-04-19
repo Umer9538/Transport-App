@@ -9,10 +9,12 @@ class AppConstants {
   static const String usersCollection = 'users';
   static const String subscriptionsCollection = 'subscriptions';
   static const String tripsCollection = 'trips';
-  static const String driversCollection = 'drivers';
-  static const String vehiclesCollection = 'vehicles';
   static const String plansCollection = 'plans';
   static const String paymentsCollection = 'payments';
+  static const String notificationsCollection = 'notifications';
+  static const String chatsCollection = 'chats';
+  static const String promoCodesCollection = 'promoCodes';
+  static const String referralsCollection = 'referrals';
 
   // Storage Paths
   static const String profileImagesPath = 'profile_images';

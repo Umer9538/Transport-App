@@ -1,18 +1,274 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/constants/app_constants.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
-class AnalyticsScreen extends StatefulWidget {
+/// Provider for analytics data based on selected period index.
+/// 0 = today, 1 = this week, 2 = this month, 3 = this year
+final _analyticsPeriodProvider = StateProvider<int>((ref) => 1);
+
+final _periodRevenueProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  final periodIndex = ref.watch(_analyticsPeriodProvider);
+  final firestore = FirebaseFirestore.instance;
+
+  final now = DateTime.now();
+  DateTime startDate;
+
+  switch (periodIndex) {
+    case 0: // today
+      startDate = DateTime(now.year, now.month, now.day);
+      break;
+    case 1: // this week
+      startDate = now.subtract(const Duration(days: 7));
+      break;
+    case 2: // this month
+      startDate = DateTime(now.year, now.month, 1);
+      break;
+    case 3: // this year
+      startDate = DateTime(now.year, 1, 1);
+      break;
+    default:
+      startDate = now.subtract(const Duration(days: 7));
+  }
+
+  // Get completed trips in the period
+  final tripsSnapshot = await firestore
+      .collection(AppConstants.tripsCollection)
+      .where('status', isEqualTo: 'completed')
+      .where('actualDropoffTime',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+      .where('actualDropoffTime',
+          isLessThanOrEqualTo: Timestamp.fromDate(now))
+      .get();
+
+  double totalRevenue = 0;
+  int totalTrips = tripsSnapshot.docs.length;
+  double totalDistance = 0;
+
+  for (final doc in tripsSnapshot.docs) {
+    final data = doc.data();
+    totalRevenue += (data['fare'] as num?)?.toDouble() ?? 0;
+    totalDistance += (data['distanceKm'] as num?)?.toDouble() ?? 0;
+  }
+
+  // Get cancelled trips count
+  final cancelledSnapshot = await firestore
+      .collection(AppConstants.tripsCollection)
+      .where('status', isEqualTo: 'cancelled')
+      .where('scheduledTime',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+      .where('scheduledTime',
+          isLessThanOrEqualTo: Timestamp.fromDate(now))
+      .count()
+      .get();
+
+  // Get new users in the period
+  final newUsersSnapshot = await firestore
+      .collection(AppConstants.usersCollection)
+      .where('role', isEqualTo: 'user')
+      .where('createdAt',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+      .count()
+      .get();
+
+  // Get average rating from completed trips in the period
+  double totalRating = 0;
+  int ratingCount = 0;
+  for (final doc in tripsSnapshot.docs) {
+    final rating = (doc.data()['rating'] as num?)?.toDouble();
+    if (rating != null && rating > 0) {
+      totalRating += rating;
+      ratingCount++;
+    }
+  }
+
+  // Get subscription revenue vs one-time (approximate: trips with subscriptionId vs without)
+  double subscriptionRevenue = 0;
+  double oneTimeRevenue = 0;
+  for (final doc in tripsSnapshot.docs) {
+    final data = doc.data();
+    final fare = (data['fare'] as num?)?.toDouble() ?? 0;
+    if (data['subscriptionId'] != null && (data['subscriptionId'] as String).isNotEmpty) {
+      subscriptionRevenue += fare;
+    } else {
+      oneTimeRevenue += fare;
+    }
+  }
+
+  return {
+    'totalRevenue': totalRevenue,
+    'subscriptionRevenue': subscriptionRevenue,
+    'oneTimeRevenue': oneTimeRevenue,
+    'totalTrips': totalTrips,
+    'totalDistance': totalDistance,
+    'cancellations': cancelledSnapshot.count ?? 0,
+    'newUsers': newUsersSnapshot.count ?? 0,
+    'avgRating': ratingCount > 0 ? (totalRating / ratingCount) : 0.0,
+  };
+});
+
+/// Provider for daily trip volume (last 7 days)
+final _tripVolumeProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final firestore = FirebaseFirestore.instance;
+  final now = DateTime.now();
+  final List<Map<String, dynamic>> dailyData = [];
+
+  final dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  for (int i = 6; i >= 0; i--) {
+    final day = now.subtract(Duration(days: i));
+    final startOfDay = DateTime(day.year, day.month, day.day);
+    final endOfDay = DateTime(day.year, day.month, day.day, 23, 59, 59);
+
+    final count = await firestore
+        .collection(AppConstants.tripsCollection)
+        .where('scheduledTime',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
+        .where('scheduledTime',
+            isLessThanOrEqualTo: Timestamp.fromDate(endOfDay))
+        .count()
+        .get();
+
+    dailyData.add({
+      'day': dayNames[day.weekday - 1],
+      'count': count.count ?? 0,
+    });
+  }
+
+  return dailyData;
+});
+
+/// Provider for subscription distribution
+final _subscriptionDistributionProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final firestore = FirebaseFirestore.instance;
+
+  final activeSubsSnapshot = await firestore
+      .collection(AppConstants.subscriptionsCollection)
+      .where('status', isEqualTo: 'active')
+      .get();
+
+  // Count by plan name
+  final Map<String, int> planCounts = {};
+  for (final doc in activeSubsSnapshot.docs) {
+    final planName = doc.data()['planName'] as String? ?? 'Unknown';
+    planCounts[planName] = (planCounts[planName] ?? 0) + 1;
+  }
+
+  final total = activeSubsSnapshot.docs.length;
+  final colors = [AppColors.secondary, AppColors.primary, Colors.orange, Colors.purple];
+
+  int colorIndex = 0;
+  return planCounts.entries.map((entry) {
+    final color = colors[colorIndex % colors.length];
+    colorIndex++;
+    return {
+      'name': entry.key,
+      'count': entry.value,
+      'color': color,
+      'percent': total > 0 ? entry.value / total : 0.0,
+    };
+  }).toList();
+});
+
+/// Provider for top drivers
+final _topDriversProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final firestore = FirebaseFirestore.instance;
+
+  // Get all drivers
+  final driversSnapshot = await firestore
+      .collection(AppConstants.usersCollection)
+      .where('role', isEqualTo: 'driver')
+      .where('isActive', isEqualTo: true)
+      .get();
+
+  final List<Map<String, dynamic>> driverStats = [];
+
+  for (final doc in driversSnapshot.docs) {
+    final data = doc.data();
+    final driverId = doc.id;
+
+    // Get completed trip count
+    final tripCount = await firestore
+        .collection(AppConstants.tripsCollection)
+        .where('driverId', isEqualTo: driverId)
+        .where('status', isEqualTo: 'completed')
+        .count()
+        .get();
+
+    driverStats.add({
+      'name': data['name'] ?? 'Unknown',
+      'rating': (data['driverRating'] as num?)?.toDouble() ?? 0.0,
+      'trips': tripCount.count ?? 0,
+    });
+  }
+
+  // Sort by trips descending, take top 3
+  driverStats.sort((a, b) => (b['trips'] as int).compareTo(a['trips'] as int));
+  return driverStats.take(3).toList();
+});
+
+/// Provider for popular routes
+final _popularRoutesProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final firestore = FirebaseFirestore.instance;
+
+  final tripsSnapshot = await firestore
+      .collection(AppConstants.tripsCollection)
+      .where('status', isEqualTo: 'completed')
+      .orderBy('actualDropoffTime', descending: true)
+      .limit(200)
+      .get();
+
+  // Group by route (pickup -> dropoff address)
+  final Map<String, Map<String, dynamic>> routeCounts = {};
+  for (final doc in tripsSnapshot.docs) {
+    final data = doc.data();
+    final pickup = (data['pickupLocation'] as Map<String, dynamic>?)?['address'] ?? '';
+    final dropoff = (data['dropoffLocation'] as Map<String, dynamic>?)?['address'] ?? '';
+
+    if (pickup.isEmpty || dropoff.isEmpty) continue;
+
+    // Use short versions of addresses
+    final pickupShort = (pickup as String).length > 20 ? pickup.substring(0, 20) : pickup;
+    final dropoffShort = (dropoff as String).length > 20 ? dropoff.substring(0, 20) : dropoff;
+    final routeKey = '$pickupShort->$dropoffShort';
+
+    if (routeCounts.containsKey(routeKey)) {
+      routeCounts[routeKey]!['trips'] = (routeCounts[routeKey]!['trips'] as int) + 1;
+    } else {
+      routeCounts[routeKey] = {
+        'from': pickupShort,
+        'to': dropoffShort,
+        'trips': 1,
+      };
+    }
+  }
+
+  final routes = routeCounts.values.toList();
+  routes.sort((a, b) => (b['trips'] as int).compareTo(a['trips'] as int));
+  return routes.take(4).toList();
+});
+
+class AnalyticsScreen extends ConsumerStatefulWidget {
   const AnalyticsScreen({super.key});
 
   @override
-  State<AnalyticsScreen> createState() => _AnalyticsScreenState();
+  ConsumerState<AnalyticsScreen> createState() => _AnalyticsScreenState();
 }
 
-class _AnalyticsScreenState extends State<AnalyticsScreen> {
-  String _selectedPeriod = 'This Week';
-
+class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final periods = [l.today, l.thisWeek, l.thisMonth, l.thisYear];
+    final selectedPeriodIndex = ref.watch(_analyticsPeriodProvider);
+    final periodRevenue = ref.watch(_periodRevenueProvider);
+    final tripVolume = ref.watch(_tripVolumeProvider);
+    final subscriptionDist = ref.watch(_subscriptionDistributionProvider);
+    final topDrivers = ref.watch(_topDriversProvider);
+    final popularRoutes = ref.watch(_popularRoutesProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -22,9 +278,9 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Analytics',
-          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+        title: Text(
+          l.analytics,
+          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
       ),
@@ -35,71 +291,118 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Period selector
-            _buildPeriodSelector(),
+            _buildPeriodSelector(periods, selectedPeriodIndex),
 
             const SizedBox(height: 24),
 
             // Revenue overview
-            _buildRevenueCard(),
+            periodRevenue.when(
+              data: (data) => _buildRevenueCard(l, data),
+              loading: () => _buildLoadingCard(height: 180),
+              error: (e, _) => _buildErrorCard(e.toString()),
+            ),
 
             const SizedBox(height: 20),
 
             // Key metrics
-            Row(
-              children: [
-                _buildMetricCard('Total Trips', '284', Icons.directions_car_rounded, AppColors.primary, '+18%'),
-                const SizedBox(width: 12),
-                _buildMetricCard('New Users', '43', Icons.person_add_rounded, AppColors.secondary, '+12%'),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _buildMetricCard('Cancellations', '8', Icons.cancel_rounded, AppColors.error, '-5%'),
-                const SizedBox(width: 12),
-                _buildMetricCard('Avg Rating', '4.8', Icons.star_rounded, Colors.amber, '+0.2'),
-              ],
+            periodRevenue.when(
+              data: (data) => Column(
+                children: [
+                  Row(
+                    children: [
+                      _buildMetricCard(l.totalTrips, '${data['totalTrips']}', Icons.directions_car_rounded, AppColors.primary),
+                      const SizedBox(width: 12),
+                      _buildMetricCard(l.newUsers, '${data['newUsers']}', Icons.person_add_rounded, AppColors.secondary),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      _buildMetricCard(l.cancellations, '${data['cancellations']}', Icons.cancel_rounded, AppColors.error),
+                      const SizedBox(width: 12),
+                      _buildMetricCard(
+                        l.avgRating,
+                        (data['avgRating'] as double) > 0
+                            ? (data['avgRating'] as double).toStringAsFixed(1)
+                            : '--',
+                        Icons.star_rounded,
+                        Colors.amber,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              loading: () => Column(
+                children: [
+                  Row(children: [Expanded(child: _buildLoadingCard(height: 110)), const SizedBox(width: 12), Expanded(child: _buildLoadingCard(height: 110))]),
+                  const SizedBox(height: 12),
+                  Row(children: [Expanded(child: _buildLoadingCard(height: 110)), const SizedBox(width: 12), Expanded(child: _buildLoadingCard(height: 110))]),
+                ],
+              ),
+              error: (e, _) => _buildErrorCard(e.toString()),
             ),
 
             const SizedBox(height: 28),
 
             // Trip chart
-            const Text(
-              'Trip Volume',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              l.tripVolume,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            _buildBarChart(),
+            tripVolume.when(
+              data: (data) => _buildBarChart(l, data),
+              loading: () => _buildLoadingCard(height: 200),
+              error: (e, _) => _buildErrorCard(e.toString()),
+            ),
 
             const SizedBox(height: 28),
 
             // Subscription breakdown
-            const Text(
-              'Subscription Distribution',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              l.subscriptionDistribution,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            _buildSubscriptionBreakdown(),
+            subscriptionDist.when(
+              data: (plans) => plans.isEmpty
+                  ? _buildEmptyCard(l)
+                  : _buildSubscriptionBreakdown(l, plans),
+              loading: () => _buildLoadingCard(height: 150),
+              error: (e, _) => _buildErrorCard(e.toString()),
+            ),
 
             const SizedBox(height: 28),
 
             // Top routes
-            const Text(
-              'Popular Routes',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              l.popularRoutes,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            _buildPopularRoutes(),
+            popularRoutes.when(
+              data: (routes) => routes.isEmpty
+                  ? _buildEmptyCard(l)
+                  : _buildPopularRoutes(l, routes),
+              loading: () => _buildLoadingCard(height: 200),
+              error: (e, _) => _buildErrorCard(e.toString()),
+            ),
 
             const SizedBox(height: 28),
 
             // Driver performance
-            const Text(
-              'Top Drivers',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              l.topDrivers,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            _buildTopDrivers(),
+            topDrivers.when(
+              data: (drivers) => drivers.isEmpty
+                  ? _buildEmptyCard(l)
+                  : _buildTopDrivers(l, drivers),
+              loading: () => _buildLoadingCard(height: 200),
+              error: (e, _) => _buildErrorCard(e.toString()),
+            ),
 
             const SizedBox(height: 32),
           ],
@@ -108,19 +411,20 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     );
   }
 
-  Widget _buildPeriodSelector() {
-    final periods = ['Today', 'This Week', 'This Month', 'This Year'];
+  Widget _buildPeriodSelector(List<String> periods, int selectedPeriodIndex) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
-        children: periods.map((period) {
-          final isSelected = period == _selectedPeriod;
+        children: periods.asMap().entries.map((entry) {
+          final index = entry.key;
+          final period = entry.value;
+          final isSelected = index == selectedPeriodIndex;
           return Padding(
             padding: const EdgeInsets.only(right: 8),
             child: ChoiceChip(
               label: Text(period),
               selected: isSelected,
-              onSelected: (_) => setState(() => _selectedPeriod = period),
+              onSelected: (_) => ref.read(_analyticsPeriodProvider.notifier).state = index,
               selectedColor: AppColors.primary,
               labelStyle: TextStyle(
                 color: isSelected ? Colors.white : AppColors.textPrimary,
@@ -137,7 +441,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     );
   }
 
-  Widget _buildRevenueCard() {
+  Widget _buildRevenueCard(AppLocalizations l, Map<String, dynamic> data) {
+    final totalRevenue = (data['totalRevenue'] as num).toDouble();
+    final subscriptionRevenue = (data['subscriptionRevenue'] as num).toDouble();
+    final oneTimeRevenue = (data['oneTimeRevenue'] as num).toDouble();
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -151,29 +459,29 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Total Revenue',
+            l.totalRevenue,
             style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'SAR 45,320',
-            style: TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
+          Text(
+            'SAR ${totalRevenue.toStringAsFixed(0)}',
+            style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
           Row(
             children: [
-              _buildRevenueDetail('Subscriptions', 'SAR 38,200'),
+              _buildRevenueDetail(l.subscriptions, 'SAR ${subscriptionRevenue.toStringAsFixed(0)}'),
               const SizedBox(width: 24),
-              _buildRevenueDetail('One-time', 'SAR 7,120'),
+              _buildRevenueDetail('One-time', 'SAR ${oneTimeRevenue.toStringAsFixed(0)}'),
             ],
           ),
           const SizedBox(height: 12),
           Row(
             children: [
-              Icon(Icons.trending_up_rounded, color: Colors.greenAccent.shade200, size: 16),
+              Icon(Icons.bar_chart_rounded, color: Colors.greenAccent.shade200, size: 16),
               const SizedBox(width: 4),
               Text(
-                '+12.5% from last period',
+                '${data['totalTrips']} ${l.trips}',
                 style: TextStyle(color: Colors.greenAccent.shade200, fontSize: 12),
               ),
             ],
@@ -194,8 +502,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     );
   }
 
-  Widget _buildMetricCard(String label, String value, IconData icon, Color color, String change) {
-    final isPositive = change.startsWith('+');
+  Widget _buildMetricCard(String label, String value, IconData icon, Color color) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -213,33 +520,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icon, color: color, size: 20),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: (isPositive ? AppColors.secondary : AppColors.error).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    change,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: isPositive ? AppColors.secondary : AppColors.error,
-                    ),
-                  ),
-                ),
-              ],
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: color, size: 20),
             ),
             const SizedBox(height: 12),
             Text(
@@ -257,16 +544,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     );
   }
 
-  Widget _buildBarChart() {
-    final data = [
-      {'day': 'Mon', 'value': 0.6},
-      {'day': 'Tue', 'value': 0.8},
-      {'day': 'Wed', 'value': 0.45},
-      {'day': 'Thu', 'value': 0.9},
-      {'day': 'Fri', 'value': 0.7},
-      {'day': 'Sat', 'value': 1.0},
-      {'day': 'Sun', 'value': 0.5},
-    ];
+  Widget _buildBarChart(AppLocalizations l, List<Map<String, dynamic>> data) {
+    if (data.isEmpty) return _buildEmptyCard(l);
+
+    final maxCount = data.map((d) => d['count'] as int).reduce((a, b) => a > b ? a : b);
+    final peakCount = maxCount;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -279,8 +561,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Daily Trips', style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
-              Text('Peak: 52 trips', style: TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600)),
+              Text(l.dailyTrips, style: TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+              Text('Peak: $peakCount ${l.trips}', style: TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600)),
             ],
           ),
           const SizedBox(height: 20),
@@ -289,7 +571,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: data.map((item) {
-                final value = item['value'] as double;
+                final count = item['count'] as int;
+                final ratio = maxCount > 0 ? count / maxCount : 0.0;
                 return Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -297,12 +580,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         Text(
-                          '${(value * 52).toInt()}',
+                          '$count',
                           style: TextStyle(fontSize: 10, color: AppColors.textHint),
                         ),
                         const SizedBox(height: 4),
                         Container(
-                          height: 120 * value,
+                          height: (120 * ratio).clamp(4.0, 120.0),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               begin: Alignment.bottomCenter,
@@ -332,14 +615,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     );
   }
 
-  Widget _buildSubscriptionBreakdown() {
-    final plans = [
-      {'name': 'Basic', 'count': 45, 'color': AppColors.secondary, 'percent': 0.35},
-      {'name': 'Standard', 'count': 52, 'color': AppColors.primary, 'percent': 0.40},
-      {'name': 'Premium', 'count': 22, 'color': Colors.orange, 'percent': 0.17},
-      {'name': 'VIP', 'count': 10, 'color': Colors.purple, 'percent': 0.08},
-    ];
-
+  Widget _buildSubscriptionBreakdown(AppLocalizations l, List<Map<String, dynamic>> plans) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -356,7 +632,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               child: Row(
                 children: plans.map((plan) {
                   return Expanded(
-                    flex: ((plan['percent'] as double) * 100).toInt(),
+                    flex: ((plan['percent'] as double) * 100).toInt().clamp(1, 100),
                     child: Container(color: plan['color'] as Color),
                   );
                 }).toList(),
@@ -384,7 +660,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                 ),
                 const Spacer(),
                 Text(
-                  '${plan['count']} users',
+                  '${plan['count']} ${l.users}',
                   style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
                 ),
                 const SizedBox(width: 8),
@@ -400,14 +676,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     );
   }
 
-  Widget _buildPopularRoutes() {
-    final routes = [
-      {'from': 'King Fahd Dist.', 'to': 'KAFD Business Park', 'trips': 89},
-      {'from': 'Al Olaya', 'to': 'King Abdullah Financial', 'trips': 67},
-      {'from': 'Al Malqa', 'to': 'Riyadh Park Mall', 'trips': 45},
-      {'from': 'Al Nakheel', 'to': 'Kingdom Tower', 'trips': 38},
-    ];
-
+  Widget _buildPopularRoutes(AppLocalizations l, List<Map<String, dynamic>> routes) {
     return Container(
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -442,16 +711,20 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            '${route['from']}',
+                            route['from'] as String,
                             style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                            overflow: TextOverflow.ellipsis,
                           ),
                           Row(
                             children: [
                               Icon(Icons.arrow_forward_rounded, size: 12, color: AppColors.textHint),
                               const SizedBox(width: 4),
-                              Text(
-                                '${route['to']}',
-                                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                              Expanded(
+                                child: Text(
+                                  route['to'] as String,
+                                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ],
                           ),
@@ -465,7 +738,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        '${route['trips']} trips',
+                        '${route['trips']} ${l.trips}',
                         style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.secondary),
                       ),
                     ),
@@ -481,13 +754,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     );
   }
 
-  Widget _buildTopDrivers() {
-    final drivers = [
-      {'name': 'Mohammed A.', 'rating': 4.9, 'trips': 156, 'onTime': '98%'},
-      {'name': 'Khalid S.', 'rating': 4.8, 'trips': 142, 'onTime': '96%'},
-      {'name': 'Abdullah M.', 'rating': 4.8, 'trips': 128, 'onTime': '97%'},
-    ];
-
+  Widget _buildTopDrivers(AppLocalizations l, List<Map<String, dynamic>> drivers) {
     return Column(
       children: drivers.asMap().entries.map((entry) {
         final index = entry.key;
@@ -533,15 +800,11 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                       children: [
                         Icon(Icons.star_rounded, size: 14, color: Colors.amber),
                         const SizedBox(width: 2),
-                        Text('${driver['rating']}', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        Text((driver['rating'] as double).toStringAsFixed(1), style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                         const SizedBox(width: 12),
                         Icon(Icons.directions_car_rounded, size: 14, color: AppColors.textHint),
                         const SizedBox(width: 2),
-                        Text('${driver['trips']} trips', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                        const SizedBox(width: 12),
-                        Icon(Icons.timer_rounded, size: 14, color: AppColors.textHint),
-                        const SizedBox(width: 2),
-                        Text('${driver['onTime']}', style: TextStyle(fontSize: 12, color: AppColors.secondary)),
+                        Text('${driver['trips']} ${l.trips}', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                       ],
                     ),
                   ],
@@ -551,6 +814,70 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           ),
         );
       }).toList(),
+    );
+  }
+
+  Widget _buildLoadingCard({required double height}) {
+    return Container(
+      height: height,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      ),
+    );
+  }
+
+  Widget _buildErrorCard(String error) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.error_outline_rounded, color: AppColors.error, size: 32),
+          const SizedBox(height: 8),
+          Text(
+            'Failed to load data',
+            style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            error,
+            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyCard(AppLocalizations l) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        children: [
+          Icon(Icons.inbox_rounded, color: AppColors.textHint, size: 32),
+          const SizedBox(height: 8),
+          Text(
+            'No data available',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+          ),
+        ],
+      ),
     );
   }
 }

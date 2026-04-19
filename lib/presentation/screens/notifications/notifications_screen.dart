@@ -1,27 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/animations/fade_animation.dart';
+import '../../../data/providers/providers.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 enum NotificationType { trip, subscription, promo, system }
-
-class NotificationItem {
-  final String id;
-  final String title;
-  final String message;
-  final NotificationType type;
-  final DateTime time;
-  final bool isRead;
-
-  NotificationItem({
-    required this.id,
-    required this.title,
-    required this.message,
-    required this.type,
-    required this.time,
-    this.isRead = false,
-  });
-}
 
 class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
@@ -33,72 +18,6 @@ class NotificationsScreen extends ConsumerStatefulWidget {
 class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-
-  // Mock notifications for test mode
-  final List<NotificationItem> _notifications = [
-    NotificationItem(
-      id: '1',
-      title: 'Driver Arriving',
-      message: 'Ahmed Khan is arriving in 5 minutes. Be ready at pickup point.',
-      type: NotificationType.trip,
-      time: DateTime.now().subtract(const Duration(minutes: 5)),
-    ),
-    NotificationItem(
-      id: '2',
-      title: 'Trip Completed',
-      message: 'Your morning trip has been completed. Rate your experience!',
-      type: NotificationType.trip,
-      time: DateTime.now().subtract(const Duration(hours: 2)),
-      isRead: true,
-    ),
-    NotificationItem(
-      id: '3',
-      title: 'Subscription Renewed',
-      message: 'Your Standard plan has been renewed for another month.',
-      type: NotificationType.subscription,
-      time: DateTime.now().subtract(const Duration(days: 1)),
-      isRead: true,
-    ),
-    NotificationItem(
-      id: '4',
-      title: '20% Off Upgrade!',
-      message: 'Upgrade to Premium plan and get 20% off for the first month.',
-      type: NotificationType.promo,
-      time: DateTime.now().subtract(const Duration(days: 2)),
-    ),
-    NotificationItem(
-      id: '5',
-      title: 'Schedule Changed',
-      message: 'Your pickup time for tomorrow has been updated to 8:30 AM.',
-      type: NotificationType.trip,
-      time: DateTime.now().subtract(const Duration(days: 2, hours: 5)),
-      isRead: true,
-    ),
-    NotificationItem(
-      id: '6',
-      title: 'Payment Received',
-      message: 'Payment of SAR 599 received for Standard plan subscription.',
-      type: NotificationType.subscription,
-      time: DateTime.now().subtract(const Duration(days: 3)),
-      isRead: true,
-    ),
-    NotificationItem(
-      id: '7',
-      title: 'App Update Available',
-      message: 'A new version of DriverApp is available. Update now for new features!',
-      type: NotificationType.system,
-      time: DateTime.now().subtract(const Duration(days: 5)),
-      isRead: true,
-    ),
-    NotificationItem(
-      id: '8',
-      title: 'Weekend Special',
-      message: 'Book weekend rides at 15% discount. Limited time offer!',
-      type: NotificationType.promo,
-      time: DateTime.now().subtract(const Duration(days: 6)),
-      isRead: true,
-    ),
-  ];
 
   @override
   void initState() {
@@ -112,23 +31,37 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
     super.dispose();
   }
 
-  List<NotificationItem> _getFilteredNotifications(int tabIndex) {
-    switch (tabIndex) {
-      case 0:
-        return _notifications;
-      case 1:
-        return _notifications.where((n) => n.type == NotificationType.trip).toList();
-      case 2:
-        return _notifications.where((n) => n.type == NotificationType.subscription).toList();
-      case 3:
-        return _notifications.where((n) => n.type == NotificationType.promo || n.type == NotificationType.system).toList();
+  NotificationType _parseType(String? type) {
+    switch (type) {
+      case 'trip':
+        return NotificationType.trip;
+      case 'subscription':
+        return NotificationType.subscription;
+      case 'promo':
+        return NotificationType.promo;
       default:
-        return _notifications;
+        return NotificationType.system;
+    }
+  }
+
+  List<Map<String, dynamic>> _getFiltered(List<Map<String, dynamic>> all, int tabIndex) {
+    switch (tabIndex) {
+      case 1:
+        return all.where((n) => n['type'] == 'trip').toList();
+      case 2:
+        return all.where((n) => n['type'] == 'subscription').toList();
+      case 3:
+        return all.where((n) => n['type'] == 'promo' || n['type'] == 'system').toList();
+      default:
+        return all;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final notificationsAsync = ref.watch(notificationsProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -145,9 +78,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Notifications',
-          style: TextStyle(
+        title: Text(
+          l.notifications,
+          style: const TextStyle(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
@@ -155,23 +88,16 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
         centerTitle: true,
         actions: [
           TextButton(
-            onPressed: () {
-              setState(() {
-                for (var i = 0; i < _notifications.length; i++) {
-                  _notifications[i] = NotificationItem(
-                    id: _notifications[i].id,
-                    title: _notifications[i].title,
-                    message: _notifications[i].message,
-                    type: _notifications[i].type,
-                    time: _notifications[i].time,
-                    isRead: true,
-                  );
-                }
-              });
+            onPressed: () async {
+              final user = ref.read(currentUserProvider);
+              if (user != null) {
+                final firestoreService = ref.read(firestoreServiceProvider);
+                await firestoreService.markAllNotificationsRead(user.uid);
+              }
             },
-            child: const Text(
-              'Read all',
-              style: TextStyle(
+            child: Text(
+              l.readAll,
+              style: const TextStyle(
                 color: AppColors.primary,
                 fontWeight: FontWeight.w600,
               ),
@@ -186,40 +112,50 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
           indicatorSize: TabBarIndicatorSize.label,
           labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
           tabs: [
-            Tab(text: 'All (${_notifications.where((n) => !n.isRead).length})'),
-            const Tab(text: 'Trips'),
-            const Tab(text: 'Billing'),
-            const Tab(text: 'Other'),
+            Tab(text: l.notifications),
+            Tab(text: l.tripsTab),
+            Tab(text: l.billingTab),
+            Tab(text: l.otherTab),
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: List.generate(4, (tabIndex) {
-          final filtered = _getFilteredNotifications(tabIndex);
-          if (filtered.isEmpty) {
-            return _buildEmptyState();
-          }
-          return ListView.builder(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            itemCount: filtered.length,
-            itemBuilder: (context, index) {
-              return FadeAnimation(
-                delay: Duration(milliseconds: 50 * index),
-                slideOffset: const Offset(0, 0.1),
-                child: _buildNotificationCard(filtered[index]),
+      body: notificationsAsync.when(
+        data: (notifications) {
+          return TabBarView(
+            controller: _tabController,
+            children: List.generate(4, (tabIndex) {
+              final filtered = _getFiltered(notifications, tabIndex);
+              if (filtered.isEmpty) {
+                return _buildEmptyState(l);
+              }
+              return ListView.builder(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                itemCount: filtered.length,
+                itemBuilder: (context, index) {
+                  return FadeAnimation(
+                    delay: Duration(milliseconds: 50 * index),
+                    slideOffset: const Offset(0, 0.1),
+                    child: _buildNotificationCard(filtered[index]),
+                  );
+                },
               );
-            },
+            }),
           );
-        }),
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (_, __) => _buildEmptyState(AppLocalizations.of(context)!),
       ),
     );
   }
 
-  Widget _buildNotificationCard(NotificationItem notification) {
+  Widget _buildNotificationCard(Map<String, dynamic> notification) {
+    final isRead = notification['isRead'] as bool? ?? false;
+    final type = _parseType(notification['type'] as String?);
+    final createdAt = (notification['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+
     return Dismissible(
-      key: Key(notification.id),
+      key: Key(notification['id'] ?? ''),
       direction: DismissDirection.endToStart,
       background: Container(
         alignment: Alignment.centerRight,
@@ -232,16 +168,15 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
         child: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
       ),
       onDismissed: (_) {
-        setState(() {
-          _notifications.removeWhere((n) => n.id == notification.id);
-        });
+        final firestoreService = ref.read(firestoreServiceProvider);
+        firestoreService.deleteNotification(notification['id']);
       },
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         decoration: BoxDecoration(
-          color: notification.isRead ? AppColors.surface : AppColors.primary.withValues(alpha: 0.05),
+          color: isRead ? AppColors.surface : AppColors.primary.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(14),
-          border: notification.isRead
+          border: isRead
               ? null
               : Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
         ),
@@ -250,19 +185,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
           child: InkWell(
             borderRadius: BorderRadius.circular(14),
             onTap: () {
-              setState(() {
-                final index = _notifications.indexWhere((n) => n.id == notification.id);
-                if (index != -1) {
-                  _notifications[index] = NotificationItem(
-                    id: notification.id,
-                    title: notification.title,
-                    message: notification.message,
-                    type: notification.type,
-                    time: notification.time,
-                    isRead: true,
-                  );
-                }
-              });
+              if (!isRead) {
+                final firestoreService = ref.read(firestoreServiceProvider);
+                firestoreService.markNotificationRead(notification['id']);
+              }
             },
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -272,12 +198,12 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
                   Container(
                     padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: _getTypeColor(notification.type).withValues(alpha: 0.1),
+                      color: _getTypeColor(type).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
-                      _getTypeIcon(notification.type),
-                      color: _getTypeColor(notification.type),
+                      _getTypeIcon(type),
+                      color: _getTypeColor(type),
                       size: 22,
                     ),
                   ),
@@ -290,15 +216,15 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
                           children: [
                             Expanded(
                               child: Text(
-                                notification.title,
+                                notification['title'] ?? '',
                                 style: TextStyle(
                                   fontSize: 15,
-                                  fontWeight: notification.isRead ? FontWeight.w500 : FontWeight.bold,
+                                  fontWeight: isRead ? FontWeight.w500 : FontWeight.bold,
                                   color: AppColors.textPrimary,
                                 ),
                               ),
                             ),
-                            if (!notification.isRead)
+                            if (!isRead)
                               Container(
                                 width: 8,
                                 height: 8,
@@ -311,7 +237,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          notification.message,
+                          notification['message'] ?? '',
                           style: TextStyle(
                             fontSize: 13,
                             color: AppColors.textSecondary,
@@ -322,7 +248,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          _formatTime(notification.time),
+                          _formatTime(createdAt),
                           style: TextStyle(
                             fontSize: 12,
                             color: AppColors.textHint,
@@ -340,7 +266,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(AppLocalizations l) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -358,9 +284,9 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'No notifications',
-            style: TextStyle(
+          Text(
+            l.noNotifications,
+            style: const TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
               color: AppColors.textPrimary,
@@ -368,7 +294,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen>
           ),
           const SizedBox(height: 8),
           Text(
-            'You\'re all caught up!',
+            l.youreAllCaughtUp,
             style: TextStyle(
               fontSize: 14,
               color: AppColors.textSecondary,

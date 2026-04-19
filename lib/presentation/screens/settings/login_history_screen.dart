@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 class LoginSession {
   final String device;
@@ -63,6 +64,7 @@ class LoginHistoryScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final sessions = _sessions;
 
     return Scaffold(
@@ -74,9 +76,9 @@ class LoginHistoryScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Login History',
-          style: TextStyle(
+        title: Text(
+          l.loginHistory,
+          style: const TextStyle(
             color: AppColors.textPrimary,
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -86,9 +88,9 @@ class LoginHistoryScreen extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => _showLogoutAllDialog(context),
-            child: const Text(
-              'Log out all',
-              style: TextStyle(color: AppColors.error, fontSize: 13),
+            child: Text(
+              l.logOutAll,
+              style: const TextStyle(color: AppColors.error, fontSize: 13),
             ),
           ),
         ],
@@ -106,6 +108,7 @@ class LoginHistoryScreen extends StatelessWidget {
   }
 
   Widget _buildSessionCard(BuildContext context, LoginSession session) {
+    final l = AppLocalizations.of(context)!;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -157,9 +160,9 @@ class LoginHistoryScreen extends StatelessWidget {
                           color: AppColors.secondary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Text(
-                          'Current',
-                          style: TextStyle(
+                        child: Text(
+                          l.current,
+                          style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                             color: AppColors.secondary,
@@ -211,33 +214,34 @@ class LoginHistoryScreen extends StatelessWidget {
   void _showLogoutAllDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Log Out All Devices'),
-        content: const Text(
-          'This will log you out from all other devices. You will remain logged in on this device.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Logged out from all other devices'),
-                  backgroundColor: AppColors.secondary,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-              );
-            },
-            child: const Text('Log Out All', style: TextStyle(color: AppColors.error)),
-          ),
-        ],
-      ),
+      builder: (ctx) {
+        final l = AppLocalizations.of(ctx)!;
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(l.logOutAllDevices),
+          content: Text(l.logOutAllConfirm),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l.cancel),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(l.loggedOutFromAll),
+                    backgroundColor: AppColors.secondary,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                );
+              },
+              child: Text(l.confirm, style: const TextStyle(color: AppColors.error)),
+            ),
+          ],
+        );
+      },
     );
   }
 }

@@ -6,6 +6,10 @@ class QuickActions extends StatelessWidget {
   final VoidCallback onHistoryTap;
   final VoidCallback onSupportTap;
   final VoidCallback onSettingsTap;
+  final String scheduleLabel;
+  final String historyLabel;
+  final String supportLabel;
+  final String settingsLabel;
 
   const QuickActions({
     super.key,
@@ -13,6 +17,10 @@ class QuickActions extends StatelessWidget {
     required this.onHistoryTap,
     required this.onSupportTap,
     required this.onSettingsTap,
+    required this.scheduleLabel,
+    required this.historyLabel,
+    required this.supportLabel,
+    required this.settingsLabel,
   });
 
   @override
@@ -22,25 +30,25 @@ class QuickActions extends StatelessWidget {
       children: [
         _QuickActionItem(
           icon: Icons.calendar_month_rounded,
-          label: 'Schedule',
+          label: scheduleLabel,
           color: AppColors.primary,
           onTap: onScheduleTap,
         ),
         _QuickActionItem(
           icon: Icons.history_rounded,
-          label: 'History',
+          label: historyLabel,
           color: AppColors.secondary,
           onTap: onHistoryTap,
         ),
         _QuickActionItem(
           icon: Icons.support_agent_rounded,
-          label: 'Support',
+          label: supportLabel,
           color: AppColors.warning,
           onTap: onSupportTap,
         ),
         _QuickActionItem(
           icon: Icons.settings_rounded,
-          label: 'Settings',
+          label: settingsLabel,
           color: AppColors.vehicleVan,
           onTap: onSettingsTap,
         ),

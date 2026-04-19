@@ -1,3 +1,24 @@
+// User Role Enum
+enum UserRole {
+  user('User'),
+  driver('Driver'),
+  admin('Admin');
+
+  final String displayName;
+  const UserRole(this.displayName);
+}
+
+// Driver Status Enum
+enum DriverStatus {
+  offline('Offline'),
+  online('Online'),
+  onTrip('On Trip'),
+  busy('Busy');
+
+  final String displayName;
+  const DriverStatus(this.displayName);
+}
+
 // Driver Gender Enum
 enum DriverGender {
   male('Male'),

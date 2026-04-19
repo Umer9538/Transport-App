@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
@@ -8,8 +7,6 @@ import '../models/user_model.dart';
 import '../models/subscription_model.dart';
 import '../models/trip_model.dart';
 import '../models/plan_model.dart';
-import '../models/address_model.dart';
-import '../models/schedule_model.dart';
 import '../../core/enums/enums.dart';
 
 // ==================== SERVICES ====================
@@ -44,11 +41,6 @@ final userDataProvider = StreamProvider.family<UserModel?, String>((ref, userId)
 });
 
 final currentUserDataProvider = StreamProvider<UserModel?>((ref) {
-  // Test mode: return mock user data
-  if (AuthService.testMode) {
-    return Stream.value(_mockUser);
-  }
-
   final user = ref.watch(currentUserProvider);
   if (user == null) return Stream.value(null);
 
@@ -59,11 +51,6 @@ final currentUserDataProvider = StreamProvider<UserModel?>((ref) {
 // ==================== PLANS ====================
 
 final plansProvider = FutureProvider<List<PlanModel>>((ref) async {
-  // Test mode: return mock plans
-  if (AuthService.testMode) {
-    return _mockPlans;
-  }
-
   final firestoreService = ref.watch(firestoreServiceProvider);
   return firestoreService.getActivePlans();
 });
@@ -71,11 +58,6 @@ final plansProvider = FutureProvider<List<PlanModel>>((ref) async {
 // ==================== SUBSCRIPTIONS ====================
 
 final activeSubscriptionProvider = StreamProvider<SubscriptionModel?>((ref) {
-  // Test mode: return mock subscription
-  if (AuthService.testMode) {
-    return Stream.value(_mockSubscription);
-  }
-
   final user = ref.watch(currentUserProvider);
   if (user == null) return Stream.value(null);
 
@@ -84,10 +66,6 @@ final activeSubscriptionProvider = StreamProvider<SubscriptionModel?>((ref) {
 });
 
 final userSubscriptionsProvider = StreamProvider<List<SubscriptionModel>>((ref) {
-  if (AuthService.testMode) {
-    return Stream.value([_mockSubscription]);
-  }
-
   final user = ref.watch(currentUserProvider);
   if (user == null) return Stream.value([]);
 
@@ -98,10 +76,6 @@ final userSubscriptionsProvider = StreamProvider<List<SubscriptionModel>>((ref) 
 // ==================== TRIPS ====================
 
 final upcomingTripsProvider = StreamProvider<List<TripModel>>((ref) {
-  if (AuthService.testMode) {
-    return Stream.value(_mockUpcomingTrips);
-  }
-
   final user = ref.watch(currentUserProvider);
   if (user == null) return Stream.value([]);
 
@@ -110,10 +84,6 @@ final upcomingTripsProvider = StreamProvider<List<TripModel>>((ref) {
 });
 
 final tripHistoryProvider = StreamProvider<List<TripModel>>((ref) {
-  if (AuthService.testMode) {
-    return Stream.value(_mockTripHistory);
-  }
-
   final user = ref.watch(currentUserProvider);
   if (user == null) return Stream.value([]);
 
@@ -127,15 +97,160 @@ final tripStreamProvider = StreamProvider.family<TripModel?, String>((ref, tripI
 });
 
 final nextTripProvider = FutureProvider<TripModel?>((ref) async {
-  if (AuthService.testMode) {
-    return _mockUpcomingTrips.isNotEmpty ? _mockUpcomingTrips.first : null;
-  }
-
   final user = ref.watch(currentUserProvider);
   if (user == null) return null;
 
   final firestoreService = ref.watch(firestoreServiceProvider);
   return firestoreService.getNextTrip(user.uid);
+});
+
+// ==================== DRIVER ====================
+
+// Driver status state
+final driverStatusProvider = StateProvider<DriverStatus>((ref) => DriverStatus.offline);
+
+// Driver's assigned trips
+final driverAssignedTripsProvider = StreamProvider<List<TripModel>>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return Stream.value([]);
+
+  final firestoreService = ref.watch(firestoreServiceProvider);
+  return firestoreService.getDriverAssignedTrips(user.uid);
+});
+
+// Driver's active trip (in progress)
+final driverActiveTripProvider = StreamProvider<TripModel?>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return Stream.value(null);
+
+  final firestoreService = ref.watch(firestoreServiceProvider);
+  return firestoreService.getDriverActiveTrip(user.uid);
+});
+
+// Driver's today trips
+final driverTodayTripsProvider = StreamProvider<List<TripModel>>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return Stream.value([]);
+
+  final firestoreService = ref.watch(firestoreServiceProvider);
+  return firestoreService.getDriverTodayTrips(user.uid);
+});
+
+// Driver's trip history
+final driverTripHistoryProvider = StreamProvider<List<TripModel>>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return Stream.value([]);
+
+  final firestoreService = ref.watch(firestoreServiceProvider);
+  return firestoreService.getDriverTripHistory(user.uid);
+});
+
+// Driver earnings for current period
+final driverEarningsProvider = FutureProvider.family<Map<String, dynamic>, String>((ref, period) async {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return {'totalEarnings': 0, 'tripCount': 0, 'totalDistance': 0, 'averagePerTrip': 0};
+
+  final firestoreService = ref.watch(firestoreServiceProvider);
+
+  final now = DateTime.now();
+  DateTime startDate;
+  DateTime endDate = now;
+
+  switch (period) {
+    case 'today':
+      startDate = DateTime(now.year, now.month, now.day);
+      break;
+    case 'week':
+      startDate = now.subtract(const Duration(days: 7));
+      break;
+    case 'month':
+      startDate = DateTime(now.year, now.month, 1);
+      break;
+    default:
+      startDate = now.subtract(const Duration(days: 7));
+  }
+
+  return firestoreService.getDriverEarnings(user.uid, startDate: startDate, endDate: endDate);
+});
+
+// Driver stats
+final driverStatsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return {'totalTrips': 0, 'averageRating': 5.0, 'acceptanceRate': 100.0};
+
+  final firestoreService = ref.watch(firestoreServiceProvider);
+  return firestoreService.getDriverStats(user.uid);
+});
+
+// All drivers (for admin)
+final allDriversProvider = StreamProvider<List<UserModel>>((ref) {
+  final firestoreService = ref.watch(firestoreServiceProvider);
+  return firestoreService.getAllDrivers();
+});
+
+// Available drivers (online, for admin trip assignment)
+final availableDriversProvider = StreamProvider<List<UserModel>>((ref) {
+  final firestoreService = ref.watch(firestoreServiceProvider);
+  return firestoreService.getAvailableDrivers();
+});
+
+// ==================== NOTIFICATIONS ====================
+
+final notificationsProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return Stream.value([]);
+
+  final firestoreService = ref.watch(firestoreServiceProvider);
+  return firestoreService.getUserNotifications(user.uid);
+});
+
+// ==================== ADMIN ====================
+
+final adminStatsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  final firestoreService = ref.watch(firestoreServiceProvider);
+  return firestoreService.getAdminStats();
+});
+
+final allUsersProvider = StreamProvider<List<UserModel>>((ref) {
+  final firestoreService = ref.watch(firestoreServiceProvider);
+  return firestoreService.getAllUsers();
+});
+
+final allTripsProvider = StreamProvider<List<TripModel>>((ref) {
+  final firestoreService = ref.watch(firestoreServiceProvider);
+  return firestoreService.getAllTrips();
+});
+
+// ==================== PAYMENTS ====================
+
+final userPaymentsProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return Stream.value([]);
+
+  final firestoreService = ref.watch(firestoreServiceProvider);
+  return firestoreService.getUserPayments(user.uid);
+});
+
+// ==================== PROMO CODES ====================
+
+final promoCodesProvider = FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final firestoreService = ref.watch(firestoreServiceProvider);
+  return firestoreService.getActivePromoCodes();
+});
+
+// ==================== LIVE CHAT ====================
+
+final chatIdProvider = FutureProvider<String>((ref) async {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) throw Exception('Not authenticated');
+
+  final firestoreService = ref.watch(firestoreServiceProvider);
+  return firestoreService.getOrCreateChat(user.uid);
+});
+
+final chatMessagesProvider = StreamProvider.family<List<Map<String, dynamic>>, String>((ref, chatId) {
+  final firestoreService = ref.watch(firestoreServiceProvider);
+  return firestoreService.getChatMessages(chatId);
 });
 
 // ==================== APP STATE ====================
@@ -145,209 +260,3 @@ final isFirstLaunchProvider = StateProvider<bool>((ref) => true);
 final selectedPlanProvider = StateProvider<PlanModel?>((ref) => null);
 
 final onboardingCompleteProvider = StateProvider<bool>((ref) => false);
-
-// ==================== TEST MODE MOCK DATA ====================
-
-final _mockUser = UserModel(
-  id: 'test-user-001',
-  name: 'Test User',
-  email: 'test@driverapp.com',
-  phone: '+1 555-123-4567',
-  preferredDriverGender: DriverGender.noPreference,
-  preferredVehicleType: VehicleType.mid,
-  createdAt: DateTime.now().subtract(const Duration(days: 30)),
-  updatedAt: DateTime.now(),
-  isVerified: true,
-  isActive: true,
-);
-
-final _mockPickup = AddressModel(
-  id: 'addr-1',
-  title: 'Home',
-  address: '123 Main Street, Downtown',
-  latitude: 25.2048,
-  longitude: 55.2708,
-  type: AddressType.home,
-);
-
-final _mockDropoff = AddressModel(
-  id: 'addr-2',
-  title: 'Office',
-  address: '456 Business Ave, Tech Park',
-  latitude: 25.2148,
-  longitude: 55.2808,
-  type: AddressType.work,
-);
-
-final _mockPlans = [
-  PlanModel(
-    id: 'plan-basic',
-    name: 'Basic',
-    description: 'Perfect for occasional commuters',
-    type: PlanType.monthly,
-    durationDays: 30,
-    basePrice: 299.0,
-    tripsPerDay: 1,
-    features: ['1 trip per day', 'Economy vehicle', 'Standard support'],
-    isPopular: false,
-    isActive: true,
-  ),
-  PlanModel(
-    id: 'plan-standard',
-    name: 'Standard',
-    description: 'Great for daily commuters',
-    type: PlanType.monthly,
-    durationDays: 30,
-    basePrice: 599.0,
-    tripsPerDay: 2,
-    features: ['2 trips per day', 'Mid-range vehicle', 'Priority support', 'Schedule flexibility'],
-    isPopular: true,
-    isActive: true,
-  ),
-  PlanModel(
-    id: 'plan-premium',
-    name: 'Premium',
-    description: 'The ultimate commute experience',
-    type: PlanType.monthly,
-    durationDays: 30,
-    basePrice: 999.0,
-    tripsPerDay: 3,
-    features: ['3 trips per day', 'Luxury vehicle', '24/7 support', 'Driver preference', 'No surge pricing'],
-    isPopular: false,
-    isActive: true,
-  ),
-];
-
-final _mockSchedule = ScheduleModel(
-  activeDays: [DayOfWeek.monday, DayOfWeek.tuesday, DayOfWeek.wednesday, DayOfWeek.thursday, DayOfWeek.friday],
-  pickupTime: const TimeOfDay(hour: 8, minute: 0),
-  returnPickupTime: const TimeOfDay(hour: 17, minute: 30),
-  pickupLocation: _mockPickup,
-  dropoffLocation: _mockDropoff,
-);
-
-final _mockSubscription = SubscriptionModel(
-  id: 'sub-001',
-  userId: 'test-user-001',
-  planId: 'plan-standard',
-  planName: 'Standard',
-  planType: PlanType.monthly,
-  status: SubscriptionStatus.active,
-  startDate: DateTime.now().subtract(const Duration(days: 10)),
-  endDate: DateTime.now().add(const Duration(days: 20)),
-  vehicleType: VehicleType.mid,
-  driverGender: DriverGender.noPreference,
-  schedule: _mockSchedule,
-  totalTrips: 40,
-  usedTrips: 14,
-  basePrice: 599.0,
-  finalPrice: 599.0,
-  createdAt: DateTime.now().subtract(const Duration(days: 10)),
-);
-
-final _mockUpcomingTrips = [
-  TripModel(
-    id: 'trip-001',
-    userId: 'test-user-001',
-    subscriptionId: 'sub-001',
-    scheduledTime: DateTime.now().add(const Duration(hours: 2)),
-    pickupLocation: _mockPickup,
-    dropoffLocation: _mockDropoff,
-    status: TripStatus.driverAssigned,
-    vehicleType: VehicleType.mid,
-    driverId: 'driver-001',
-    driverName: 'Ahmed Khan',
-    vehicleNumber: 'ABC-1234',
-    vehicleModel: 'Toyota Camry',
-    driverRating: 4.9,
-    createdAt: DateTime.now().subtract(const Duration(hours: 1)),
-    updatedAt: DateTime.now(),
-  ),
-  TripModel(
-    id: 'trip-002',
-    userId: 'test-user-001',
-    subscriptionId: 'sub-001',
-    scheduledTime: DateTime.now().add(const Duration(days: 1, hours: 8)),
-    pickupLocation: _mockPickup,
-    dropoffLocation: _mockDropoff,
-    status: TripStatus.scheduled,
-    vehicleType: VehicleType.mid,
-    createdAt: DateTime.now(),
-    updatedAt: DateTime.now(),
-  ),
-  TripModel(
-    id: 'trip-003',
-    userId: 'test-user-001',
-    subscriptionId: 'sub-001',
-    scheduledTime: DateTime.now().add(const Duration(days: 1, hours: 17)),
-    pickupLocation: _mockDropoff,
-    dropoffLocation: _mockPickup,
-    status: TripStatus.scheduled,
-    vehicleType: VehicleType.mid,
-    createdAt: DateTime.now(),
-    updatedAt: DateTime.now(),
-  ),
-];
-
-final _mockTripHistory = [
-  TripModel(
-    id: 'trip-h1',
-    userId: 'test-user-001',
-    subscriptionId: 'sub-001',
-    scheduledTime: DateTime.now().subtract(const Duration(days: 1, hours: 8)),
-    pickupLocation: _mockPickup,
-    dropoffLocation: _mockDropoff,
-    status: TripStatus.completed,
-    vehicleType: VehicleType.mid,
-    driverId: 'driver-002',
-    driverName: 'Mohammed Ali',
-    vehicleNumber: 'XYZ-5678',
-    vehicleModel: 'Honda Accord',
-    vehicleColor: 'White',
-    driverRating: 4.8,
-    actualPickupTime: DateTime.now().subtract(const Duration(days: 1, hours: 7, minutes: 45)),
-    actualDropoffTime: DateTime.now().subtract(const Duration(days: 1, hours: 7, minutes: 15)),
-    rating: 5.0,
-    fare: 45.0,
-    distanceKm: 12.3,
-    estimatedMinutes: 30,
-    createdAt: DateTime.now().subtract(const Duration(days: 2)),
-    updatedAt: DateTime.now().subtract(const Duration(days: 1)),
-  ),
-  TripModel(
-    id: 'trip-h2',
-    userId: 'test-user-001',
-    subscriptionId: 'sub-001',
-    scheduledTime: DateTime.now().subtract(const Duration(days: 2, hours: 8)),
-    pickupLocation: _mockPickup,
-    dropoffLocation: _mockDropoff,
-    status: TripStatus.completed,
-    vehicleType: VehicleType.mid,
-    driverId: 'driver-001',
-    driverName: 'Ahmed Khan',
-    vehicleNumber: 'ABC-1234',
-    vehicleModel: 'Toyota Camry',
-    vehicleColor: 'Silver',
-    driverRating: 4.9,
-    actualPickupTime: DateTime.now().subtract(const Duration(days: 2, hours: 7, minutes: 50)),
-    actualDropoffTime: DateTime.now().subtract(const Duration(days: 2, hours: 7, minutes: 20)),
-    rating: 4.5,
-    fare: 62.5,
-    distanceKm: 15.7,
-    estimatedMinutes: 35,
-    createdAt: DateTime.now().subtract(const Duration(days: 3)),
-    updatedAt: DateTime.now().subtract(const Duration(days: 2)),
-  ),
-  TripModel(
-    id: 'trip-h3',
-    userId: 'test-user-001',
-    subscriptionId: 'sub-001',
-    scheduledTime: DateTime.now().subtract(const Duration(days: 3, hours: 17)),
-    pickupLocation: _mockDropoff,
-    dropoffLocation: _mockPickup,
-    status: TripStatus.cancelled,
-    vehicleType: VehicleType.mid,
-    createdAt: DateTime.now().subtract(const Duration(days: 4)),
-    updatedAt: DateTime.now().subtract(const Duration(days: 3)),
-  ),
-];

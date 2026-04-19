@@ -17,6 +17,16 @@ class UserModel {
   final DateTime updatedAt;
   final bool isVerified;
   final bool isActive;
+  final UserRole role;
+
+  // Driver-specific fields
+  final String? vehicleModel;
+  final String? vehiclePlate;
+  final String? vehicleColor;
+  final VehicleType? vehicleType;
+  final double? driverRating;
+  final int? totalTrips;
+  final DriverStatus? driverStatus;
 
   UserModel({
     required this.id,
@@ -33,7 +43,19 @@ class UserModel {
     required this.updatedAt,
     this.isVerified = false,
     this.isActive = true,
+    this.role = UserRole.user,
+    this.vehicleModel,
+    this.vehiclePlate,
+    this.vehicleColor,
+    this.vehicleType,
+    this.driverRating,
+    this.totalTrips,
+    this.driverStatus,
   });
+
+  bool get isDriver => role == UserRole.driver;
+  bool get isAdmin => role == UserRole.admin;
+  bool get isUser => role == UserRole.user;
 
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
@@ -61,6 +83,27 @@ class UserModel {
       updatedAt: (data['updatedAt'] as Timestamp).toDate(),
       isVerified: data['isVerified'] ?? false,
       isActive: data['isActive'] ?? true,
+      role: UserRole.values.firstWhere(
+        (e) => e.name == data['role'],
+        orElse: () => UserRole.user,
+      ),
+      vehicleModel: data['vehicleModel'],
+      vehiclePlate: data['vehiclePlate'],
+      vehicleColor: data['vehicleColor'],
+      vehicleType: data['vehicleType'] != null
+          ? VehicleType.values.firstWhere(
+              (e) => e.name == data['vehicleType'],
+              orElse: () => VehicleType.mid,
+            )
+          : null,
+      driverRating: data['driverRating']?.toDouble(),
+      totalTrips: data['totalTrips'],
+      driverStatus: data['driverStatus'] != null
+          ? DriverStatus.values.firstWhere(
+              (e) => e.name == data['driverStatus'],
+              orElse: () => DriverStatus.offline,
+            )
+          : null,
     );
   }
 
@@ -79,6 +122,14 @@ class UserModel {
       'updatedAt': Timestamp.fromDate(updatedAt),
       'isVerified': isVerified,
       'isActive': isActive,
+      'role': role.name,
+      'vehicleModel': vehicleModel,
+      'vehiclePlate': vehiclePlate,
+      'vehicleColor': vehicleColor,
+      'vehicleType': vehicleType?.name,
+      'driverRating': driverRating,
+      'totalTrips': totalTrips,
+      'driverStatus': driverStatus?.name,
     };
   }
 
@@ -97,6 +148,14 @@ class UserModel {
     DateTime? updatedAt,
     bool? isVerified,
     bool? isActive,
+    UserRole? role,
+    String? vehicleModel,
+    String? vehiclePlate,
+    String? vehicleColor,
+    VehicleType? vehicleType,
+    double? driverRating,
+    int? totalTrips,
+    DriverStatus? driverStatus,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -113,6 +172,14 @@ class UserModel {
       updatedAt: updatedAt ?? this.updatedAt,
       isVerified: isVerified ?? this.isVerified,
       isActive: isActive ?? this.isActive,
+      role: role ?? this.role,
+      vehicleModel: vehicleModel ?? this.vehicleModel,
+      vehiclePlate: vehiclePlate ?? this.vehiclePlate,
+      vehicleColor: vehicleColor ?? this.vehicleColor,
+      vehicleType: vehicleType ?? this.vehicleType,
+      driverRating: driverRating ?? this.driverRating,
+      totalTrips: totalTrips ?? this.totalTrips,
+      driverStatus: driverStatus ?? this.driverStatus,
     );
   }
 }

@@ -1,18 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/enums/enum_l10n.dart';
 import '../../../core/animations/fade_animation.dart';
 import '../../../data/models/trip_model.dart';
+import '../../../data/providers/providers.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
-class RateDriverScreen extends StatefulWidget {
+class RateDriverScreen extends ConsumerStatefulWidget {
   final TripModel trip;
 
   const RateDriverScreen({super.key, required this.trip});
 
   @override
-  State<RateDriverScreen> createState() => _RateDriverScreenState();
+  ConsumerState<RateDriverScreen> createState() => _RateDriverScreenState();
 }
 
-class _RateDriverScreenState extends State<RateDriverScreen>
+class _RateDriverScreenState extends ConsumerState<RateDriverScreen>
     with SingleTickerProviderStateMixin {
   int _rating = 0;
   final _feedbackController = TextEditingController();
@@ -20,24 +24,6 @@ class _RateDriverScreenState extends State<RateDriverScreen>
   bool _isSubmitting = false;
 
   late AnimationController _starController;
-
-  final _positiveTags = [
-    'Smooth Driving',
-    'On Time',
-    'Friendly',
-    'Clean Car',
-    'Good Music',
-    'Professional',
-  ];
-
-  final _negativeTags = [
-    'Late Arrival',
-    'Rude',
-    'Reckless Driving',
-    'Dirty Car',
-    'Wrong Route',
-    'Phone Usage',
-  ];
 
   @override
   void initState() {
@@ -55,10 +41,30 @@ class _RateDriverScreenState extends State<RateDriverScreen>
     super.dispose();
   }
 
-  List<String> get _availableTags => _rating >= 4 ? _positiveTags : _negativeTags;
+  List<String> _getPositiveTags(AppLocalizations l) => [
+    l.smoothDriving,
+    l.onTime,
+    l.friendly,
+    l.cleanCar,
+    l.goodMusic,
+    l.professional,
+  ];
+
+  List<String> _getNegativeTags(AppLocalizations l) => [
+    l.lateArrival,
+    l.rude,
+    l.recklessDriving,
+    l.dirtyCar,
+    l.wrongRoute,
+    l.phoneUsage,
+  ];
+
+  List<String> _getAvailableTags(AppLocalizations l) =>
+      _rating >= 4 ? _getPositiveTags(l) : _getNegativeTags(l);
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -75,9 +81,9 @@ class _RateDriverScreenState extends State<RateDriverScreen>
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Rate Your Trip',
-          style: TextStyle(
+        title: Text(
+          l.rateYourTrip,
+          style: const TextStyle(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
@@ -94,7 +100,7 @@ class _RateDriverScreenState extends State<RateDriverScreen>
             // Driver info
             FadeAnimation(
               delay: const Duration(milliseconds: 100),
-              child: _buildDriverHeader(),
+              child: _buildDriverHeader(l),
             ),
 
             const SizedBox(height: 36),
@@ -126,7 +132,7 @@ class _RateDriverScreenState extends State<RateDriverScreen>
             if (_rating > 0)
               FadeAnimation(
                 delay: const Duration(milliseconds: 100),
-                child: _buildTags(),
+                child: _buildTags(l),
               ),
 
             if (_rating > 0) const SizedBox(height: 24),
@@ -135,7 +141,7 @@ class _RateDriverScreenState extends State<RateDriverScreen>
             if (_rating > 0)
               FadeAnimation(
                 delay: const Duration(milliseconds: 200),
-                child: _buildFeedbackField(),
+                child: _buildFeedbackField(l),
               ),
 
             if (_rating > 0) const SizedBox(height: 32),
@@ -144,7 +150,7 @@ class _RateDriverScreenState extends State<RateDriverScreen>
             if (_rating > 0)
               FadeAnimation(
                 delay: const Duration(milliseconds: 300),
-                child: _buildSubmitButton(),
+                child: _buildSubmitButton(l),
               ),
 
             const SizedBox(height: 32),
@@ -154,7 +160,7 @@ class _RateDriverScreenState extends State<RateDriverScreen>
     );
   }
 
-  Widget _buildDriverHeader() {
+  Widget _buildDriverHeader(AppLocalizations l) {
     return Column(
       children: [
         Container(
@@ -172,7 +178,7 @@ class _RateDriverScreenState extends State<RateDriverScreen>
         ),
         const SizedBox(height: 14),
         Text(
-          widget.trip.driverName ?? 'Your Driver',
+          widget.trip.driverName ?? l.yourDriver,
           style: const TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -181,7 +187,7 @@ class _RateDriverScreenState extends State<RateDriverScreen>
         ),
         const SizedBox(height: 4),
         Text(
-          widget.trip.vehicleModel ?? widget.trip.vehicleType.displayName,
+          widget.trip.vehicleModel ?? widget.trip.vehicleType.localizedName(l),
           style: TextStyle(
             fontSize: 14,
             color: AppColors.textSecondary,
@@ -222,12 +228,13 @@ class _RateDriverScreenState extends State<RateDriverScreen>
     );
   }
 
-  Widget _buildTags() {
+  Widget _buildTags(AppLocalizations l) {
+    final availableTags = _getAvailableTags(l);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          _rating >= 4 ? 'What did you like?' : 'What went wrong?',
+          _rating >= 4 ? l.whatDidYouLike : l.whatWentWrong,
           style: const TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w600,
@@ -238,7 +245,7 @@ class _RateDriverScreenState extends State<RateDriverScreen>
         Wrap(
           spacing: 8,
           runSpacing: 8,
-          children: _availableTags.map((tag) {
+          children: availableTags.map((tag) {
             final isSelected = _selectedTags.contains(tag);
             return GestureDetector(
               onTap: () {
@@ -282,13 +289,13 @@ class _RateDriverScreenState extends State<RateDriverScreen>
     );
   }
 
-  Widget _buildFeedbackField() {
+  Widget _buildFeedbackField(AppLocalizations l) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Additional Feedback (Optional)',
-          style: TextStyle(
+        Text(
+          l.additionalFeedback,
+          style: const TextStyle(
             fontSize: 15,
             fontWeight: FontWeight.w600,
             color: AppColors.textPrimary,
@@ -300,7 +307,7 @@ class _RateDriverScreenState extends State<RateDriverScreen>
           maxLines: 3,
           maxLength: 200,
           decoration: InputDecoration(
-            hintText: 'Tell us more about your experience...',
+            hintText: l.tellUsMoreAboutExperience,
             hintStyle: TextStyle(color: AppColors.textHint),
             filled: true,
             fillColor: AppColors.surface,
@@ -323,7 +330,7 @@ class _RateDriverScreenState extends State<RateDriverScreen>
     );
   }
 
-  Widget _buildSubmitButton() {
+  Widget _buildSubmitButton(AppLocalizations l) {
     return SizedBox(
       width: double.infinity,
       height: 56,
@@ -345,9 +352,9 @@ class _RateDriverScreenState extends State<RateDriverScreen>
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
               )
-            : const Text(
-                'Submit Rating',
-                style: TextStyle(
+            : Text(
+                l.submitRating,
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                   color: Colors.white,
@@ -360,20 +367,49 @@ class _RateDriverScreenState extends State<RateDriverScreen>
   Future<void> _submitRating() async {
     setState(() => _isSubmitting = true);
 
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      final firestoreService = ref.read(firestoreServiceProvider);
 
-    if (mounted) {
-      setState(() => _isSubmitting = false);
-      Navigator.pop(context);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Thank you for your feedback!'),
-          backgroundColor: AppColors.secondary,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
+      // Build feedback string with tags
+      final feedbackParts = <String>[];
+      if (_selectedTags.isNotEmpty) {
+        feedbackParts.add('Tags: ${_selectedTags.join(', ')}');
+      }
+      if (_feedbackController.text.trim().isNotEmpty) {
+        feedbackParts.add(_feedbackController.text.trim());
+      }
+
+      await firestoreService.rateTrip(
+        widget.trip.id,
+        _rating.toDouble(),
+        feedbackParts.isNotEmpty ? feedbackParts.join(' | ') : null,
       );
+
+      if (mounted) {
+        final l = AppLocalizations.of(context)!;
+        setState(() => _isSubmitting = false);
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l.thankYouForFeedback),
+            backgroundColor: AppColors.secondary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error submitting rating: ${e.toString()}'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
     }
   }
 

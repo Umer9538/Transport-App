@@ -6,6 +6,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/animations/fade_animation.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../data/providers/providers.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 class OTPScreen extends ConsumerStatefulWidget {
   final String phoneNumber;
@@ -88,7 +89,7 @@ class _OTPScreenState extends ConsumerState<OTPScreen>
 
       if (!mounted) return;
 
-      // Test mode: credential is null, go directly to profile setup
+      // Phone auth mode - go to profile setup
       if (authService.isTestMode) {
         Navigator.pushReplacementNamed(context, '/profile-setup');
         return;
@@ -115,9 +116,10 @@ class _OTPScreenState extends ConsumerState<OTPScreen>
       _shakeController.forward().then((_) => _shakeController.reverse());
 
       if (mounted) {
+        final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Invalid OTP. Please try again.'),
+            content: Text(l.invalidOtp),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -141,9 +143,10 @@ class _OTPScreenState extends ConsumerState<OTPScreen>
       onCodeSent: (verificationId) {
         setState(() => _isResending = false);
         _startResendTimer();
+        final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('OTP sent successfully!'),
+            content: Text(l.otpSentSuccessfully),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -173,6 +176,7 @@ class _OTPScreenState extends ConsumerState<OTPScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final defaultPinTheme = PinTheme(
       width: 56,
       height: 60,
@@ -249,9 +253,9 @@ class _OTPScreenState extends ConsumerState<OTPScreen>
                   FadeAnimation(
                     delay: const Duration(milliseconds: 200),
                     slideOffset: const Offset(0, 0.5),
-                    child: const Text(
-                      'Verification',
-                      style: TextStyle(
+                    child: Text(
+                      l.verification,
+                      style: const TextStyle(
                         fontSize: 36,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
@@ -265,7 +269,7 @@ class _OTPScreenState extends ConsumerState<OTPScreen>
                     delay: const Duration(milliseconds: 300),
                     slideOffset: const Offset(0, 0.5),
                     child: Text(
-                      'We\'ve sent a 6-digit code to',
+                      l.weSentCodeTo,
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.white.withValues(alpha: 0.8),
@@ -377,9 +381,9 @@ class _OTPScreenState extends ConsumerState<OTPScreen>
                                           ),
                                         ),
                                       )
-                                    : const Text(
-                                        'Verify',
-                                        style: TextStyle(
+                                    : Text(
+                                        l.verify,
+                                        style: const TextStyle(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w600,
                                           color: Colors.white,
@@ -402,7 +406,7 @@ class _OTPScreenState extends ConsumerState<OTPScreen>
                       child: Column(
                         children: [
                           Text(
-                            'Didn\'t receive the code?',
+                            l.didNotReceiveCode,
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.8),
                               fontSize: 14,
@@ -437,8 +441,8 @@ class _OTPScreenState extends ConsumerState<OTPScreen>
                                     )
                                   : Text(
                                       _resendTimer > 0
-                                          ? 'Resend in ${_resendTimer}s'
-                                          : 'Resend OTP',
+                                          ? l.resendIn(_resendTimer)
+                                          : l.resendOtp,
                                       style: TextStyle(
                                         color: _resendTimer == 0
                                             ? Colors.white

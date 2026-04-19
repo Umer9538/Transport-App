@@ -3,10 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/enums/enums.dart';
+import '../../../core/enums/enum_l10n.dart';
 import '../../../core/animations/fade_animation.dart';
 import '../../../data/providers/providers.dart';
 import '../../../data/models/trip_model.dart';
 import '../../widgets/common/shimmer_loading.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 class TripHistoryScreen extends ConsumerStatefulWidget {
   const TripHistoryScreen({super.key});
@@ -33,6 +35,8 @@ class _TripHistoryScreenState extends ConsumerState<TripHistoryScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -49,9 +53,9 @@ class _TripHistoryScreenState extends ConsumerState<TripHistoryScreen>
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Trip History',
-          style: TextStyle(
+        title: Text(
+          l.tripHistory,
+          style: const TextStyle(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
@@ -63,9 +67,9 @@ class _TripHistoryScreenState extends ConsumerState<TripHistoryScreen>
           unselectedLabelColor: AppColors.textSecondary,
           indicatorColor: AppColors.primary,
           indicatorWeight: 3,
-          tabs: const [
-            Tab(text: 'Completed'),
-            Tab(text: 'Cancelled'),
+          tabs: [
+            Tab(text: l.completed),
+            Tab(text: l.cancelled),
           ],
         ),
       ),
@@ -301,6 +305,7 @@ class _TripHistoryScreenState extends ConsumerState<TripHistoryScreen>
   }
 
   Widget _buildEmptyState(TripStatus filterStatus) {
+    final l = AppLocalizations.of(context)!;
     final isCompleted = filterStatus == TripStatus.completed;
 
     return Center(
@@ -326,7 +331,7 @@ class _TripHistoryScreenState extends ConsumerState<TripHistoryScreen>
             ),
             const SizedBox(height: 24),
             Text(
-              isCompleted ? 'No completed trips yet' : 'No cancelled trips',
+              isCompleted ? l.noCompletedTripsYet : l.noCancelledTrips,
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
@@ -336,8 +341,8 @@ class _TripHistoryScreenState extends ConsumerState<TripHistoryScreen>
             const SizedBox(height: 8),
             Text(
               isCompleted
-                  ? 'Your completed trips will appear here'
-                  : 'Cancelled trips will appear here',
+                  ? l.completedTripsEmpty
+                  : l.cancelledTripsEmpty,
               style: TextStyle(
                 fontSize: 14,
                 color: AppColors.textSecondary,
@@ -356,6 +361,7 @@ class _TripHistoryScreenState extends ConsumerState<TripHistoryScreen>
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) {
+        final l = AppLocalizations.of(context)!;
         return Container(
           height: MediaQuery.of(context).size.height * 0.7,
           decoration: const BoxDecoration(
@@ -394,7 +400,7 @@ class _TripHistoryScreenState extends ConsumerState<TripHistoryScreen>
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
-                              trip.status.displayName,
+                              trip.status.localizedName(l),
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
@@ -417,9 +423,9 @@ class _TripHistoryScreenState extends ConsumerState<TripHistoryScreen>
                       const SizedBox(height: 24),
 
                       // Route details
-                      const Text(
-                        'Trip Route',
-                        style: TextStyle(
+                      Text(
+                        l.tripRoute,
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                           color: AppColors.textPrimary,
@@ -429,7 +435,7 @@ class _TripHistoryScreenState extends ConsumerState<TripHistoryScreen>
                       _buildDetailRow(
                         icon: Icons.trip_origin_rounded,
                         iconColor: AppColors.primary,
-                        title: 'Pickup',
+                        title: l.pickup,
                         value: trip.pickupLocation.address,
                         time: trip.formattedScheduledTime,
                       ),
@@ -437,7 +443,7 @@ class _TripHistoryScreenState extends ConsumerState<TripHistoryScreen>
                       _buildDetailRow(
                         icon: Icons.location_on_rounded,
                         iconColor: AppColors.secondary,
-                        title: 'Drop-off',
+                        title: l.dropoff,
                         value: trip.dropoffLocation.address,
                         time: trip.actualDropoffTime != null
                             ? TimeOfDay.fromDateTime(trip.actualDropoffTime!)
@@ -447,9 +453,9 @@ class _TripHistoryScreenState extends ConsumerState<TripHistoryScreen>
 
                       if (trip.hasDriver) ...[
                         const SizedBox(height: 24),
-                        const Text(
-                          'Driver',
-                          style: TextStyle(
+                        Text(
+                          l.driver,
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                             color: AppColors.textPrimary,
@@ -476,7 +482,7 @@ class _TripHistoryScreenState extends ConsumerState<TripHistoryScreen>
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    trip.driverName ?? 'Driver',
+                                    trip.driverName ?? l.driver,
                                     style: const TextStyle(
                                       fontSize: 15,
                                       fontWeight: FontWeight.w600,
@@ -530,9 +536,9 @@ class _TripHistoryScreenState extends ConsumerState<TripHistoryScreen>
                             ),
                             child: Column(
                               children: [
-                                const Text(
-                                  'Rate this trip',
-                                  style: TextStyle(
+                                Text(
+                                  l.rateTrip,
+                                  style: const TextStyle(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -565,7 +571,7 @@ class _TripHistoryScreenState extends ConsumerState<TripHistoryScreen>
                             Navigator.pushNamed(context, '/trip-details', arguments: trip);
                           },
                           icon: const Icon(Icons.open_in_full_rounded, size: 18),
-                          label: const Text('View Full Details'),
+                          label: Text(l.viewFullDetails),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,

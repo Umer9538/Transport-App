@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/animations/staggered_animation.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 class SupportScreen extends StatelessWidget {
   const SupportScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -24,9 +26,9 @@ class SupportScreen extends StatelessWidget {
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Help & Support',
-          style: TextStyle(
+        title: Text(
+          l.helpAndSupport,
+          style: const TextStyle(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
@@ -41,14 +43,14 @@ class SupportScreen extends StatelessWidget {
           staggerDelay: const Duration(milliseconds: 60),
           children: [
             // Quick Actions
-            _buildQuickActions(context),
+            _buildQuickActions(context, l),
 
             const SizedBox(height: 28),
 
             // FAQ Section
-            const Text(
-              'Frequently Asked Questions',
-              style: TextStyle(
+            Text(
+              l.frequentlyAskedQuestions,
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textPrimary,
@@ -57,36 +59,36 @@ class SupportScreen extends StatelessWidget {
             const SizedBox(height: 16),
 
             _buildFAQItem(
-              'How do I change my pickup time?',
-              'Go to My Schedule > Select a day > Tap "Modify" on the trip card. You can change the pickup time up to 2 hours before the scheduled time.',
+              l.faqChangePickupTime,
+              l.faqChangePickupTimeAnswer,
             ),
             _buildFAQItem(
-              'Can I cancel a single trip?',
-              'Yes! Open the trip from your schedule or home screen, then tap "Cancel Trip". Cancellations within 30 minutes of pickup may incur a fee.',
+              l.faqCancelSingleTrip,
+              l.faqCancelSingleTripAnswer,
             ),
             _buildFAQItem(
-              'How do I upgrade my plan?',
-              'Go to Profile > My Subscription > Upgrade Plan. Choose a new plan and the price difference will be prorated for the remaining days.',
+              l.faqUpgradePlan,
+              l.faqUpgradePlanAnswer,
             ),
             _buildFAQItem(
-              'What if my driver doesn\'t show up?',
-              'If your driver hasn\'t arrived within 10 minutes of the scheduled time, you can report it through the app. We\'ll assign a new driver or provide a credit.',
+              l.faqDriverNoShow,
+              l.faqDriverNoShowAnswer,
             ),
             _buildFAQItem(
-              'How do I change my payment method?',
-              'Go to Profile > Payment Methods. You can add a new card or bank account, and set it as your default payment method.',
+              l.faqChangePayment,
+              l.faqChangePaymentAnswer,
             ),
             _buildFAQItem(
-              'Can I pause my subscription?',
-              'Yes, you can pause your subscription for up to 14 days per month. Go to Profile > My Subscription > Pause Subscription.',
+              l.faqPauseSubscription,
+              l.faqPauseSubscriptionAnswer,
             ),
 
             const SizedBox(height: 28),
 
             // Contact Section
-            const Text(
-              'Contact Us',
-              style: TextStyle(
+            Text(
+              l.contactUs,
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textPrimary,
@@ -96,29 +98,29 @@ class SupportScreen extends StatelessWidget {
 
             _buildContactTile(
               icon: Icons.chat_bubble_outline_rounded,
-              title: 'Live Chat',
-              subtitle: 'Chat with our support team',
+              title: l.liveChat,
+              subtitle: l.chatWithSupportTeam,
               color: AppColors.primary,
               onTap: () => Navigator.pushNamed(context, '/live-chat'),
             ),
             _buildContactTile(
               icon: Icons.email_outlined,
-              title: 'Email Support',
+              title: l.emailSupport,
               subtitle: 'support@driverapp.com',
               color: AppColors.secondary,
               onTap: () => _launchEmail(context),
             ),
             _buildContactTile(
               icon: Icons.phone_outlined,
-              title: 'Phone Support',
+              title: l.phoneSupport,
               subtitle: '+966 11 234 5678',
               color: Colors.orange,
               onTap: () => _launchPhone(context),
             ),
             _buildContactTile(
               icon: Icons.bug_report_outlined,
-              title: 'Report a Problem',
-              subtitle: 'Let us know about issues',
+              title: l.reportProblem,
+              subtitle: l.letUsKnowIssues,
               color: AppColors.error,
               onTap: () => _showReportDialog(context),
             ),
@@ -130,13 +132,13 @@ class SupportScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickActions(BuildContext context) {
+  Widget _buildQuickActions(BuildContext context, AppLocalizations l) {
     return Row(
       children: [
         Expanded(
           child: _buildQuickActionCard(
             icon: Icons.receipt_long_rounded,
-            label: 'Trip Issue',
+            label: l.tripIssue,
             color: AppColors.primary,
             onTap: () => _showTripIssueSheet(context),
           ),
@@ -145,7 +147,7 @@ class SupportScreen extends StatelessWidget {
         Expanded(
           child: _buildQuickActionCard(
             icon: Icons.payment_rounded,
-            label: 'Billing',
+            label: l.billing,
             color: AppColors.secondary,
             onTap: () => Navigator.pushNamed(context, '/payment-methods'),
           ),
@@ -154,7 +156,7 @@ class SupportScreen extends StatelessWidget {
         Expanded(
           child: _buildQuickActionCard(
             icon: Icons.person_outline_rounded,
-            label: 'Account',
+            label: l.account,
             color: Colors.orange,
             onTap: () => Navigator.pushNamed(context, '/personal-info'),
           ),
@@ -490,7 +492,7 @@ class SupportScreen extends StatelessWidget {
       builder: (context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Report a Problem'),
+          title: Text(AppLocalizations.of(context)!.reportProblem),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [

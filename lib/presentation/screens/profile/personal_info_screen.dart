@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../data/providers/providers.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 class PersonalInfoScreen extends ConsumerStatefulWidget {
   const PersonalInfoScreen({super.key});
@@ -59,22 +60,61 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
 
     setState(() => _isSaving = true);
 
-    // Simulate saving
-    await Future.delayed(const Duration(milliseconds: 800));
+    try {
+      final user = ref.read(currentUserProvider);
+      if (user == null) throw Exception('Not authenticated');
 
-    if (mounted) {
-      setState(() {
-        _isSaving = false;
-        _isEditing = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Profile updated successfully'),
-          backgroundColor: AppColors.secondary,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
+      final firestoreService = ref.read(firestoreServiceProvider);
+
+      // Upload profile image if selected
+      String? imageUrl;
+      if (_selectedImage != null) {
+        imageUrl = await firestoreService.uploadProfileImage(
+          user.uid,
+          _selectedImage!,
+        );
+      }
+
+      // Update user data in Firestore
+      final updateData = <String, dynamic>{
+        'name': _nameController.text.trim(),
+        'email': _emailController.text.trim(),
+        'emergencyContactName': _emergencyNameController.text.trim(),
+        'emergencyContact': _emergencyPhoneController.text.trim(),
+      };
+      if (imageUrl != null) {
+        updateData['profileImageUrl'] = imageUrl;
+      }
+
+      await firestoreService.updateUser(user.uid, updateData);
+
+      if (mounted) {
+        final l = AppLocalizations.of(context)!;
+        setState(() {
+          _isSaving = false;
+          _isEditing = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(l.profileUpdatedSuccessfully),
+            backgroundColor: AppColors.secondary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving profile: ${e.toString()}'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
     }
   }
 
@@ -83,6 +123,7 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
+        final l = AppLocalizations.of(ctx)!;
         return Container(
           decoration: const BoxDecoration(
             color: Colors.white,
@@ -101,9 +142,9 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
                 ),
               ),
               const SizedBox(height: 20),
-              const Text(
-                'Change Profile Photo',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Text(
+                l.changeProfilePhoto,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
               ListTile(
@@ -115,8 +156,8 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
                   ),
                   child: const Icon(Icons.camera_alt_rounded, color: AppColors.primary),
                 ),
-                title: const Text('Take Photo'),
-                subtitle: const Text('Use your camera'),
+                title: Text(l.takePhoto),
+                subtitle: Text(l.useYourCamera),
                 onTap: () {
                   Navigator.pop(ctx);
                   _pickImage(ImageSource.camera);
@@ -131,8 +172,8 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
                   ),
                   child: const Icon(Icons.photo_library_rounded, color: AppColors.secondary),
                 ),
-                title: const Text('Choose from Gallery'),
-                subtitle: const Text('Pick an existing photo'),
+                title: Text(l.chooseFromGallery),
+                subtitle: Text(l.pickAnExistingPhoto),
                 onTap: () {
                   Navigator.pop(ctx);
                   _pickImage(ImageSource.gallery);
@@ -148,8 +189,8 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
                     ),
                     child: const Icon(Icons.delete_rounded, color: AppColors.error),
                   ),
-                  title: const Text('Remove Photo'),
-                  subtitle: const Text('Use default avatar'),
+                  title: Text(l.removePhoto),
+                  subtitle: Text(l.useDefaultAvatar),
                   onTap: () {
                     Navigator.pop(ctx);
                     setState(() => _selectedImage = null);
@@ -174,9 +215,10 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
       if (image != null) {
         setState(() => _selectedImage = File(image.path));
         if (mounted) {
+          final l = AppLocalizations.of(context)!;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Photo selected. Save changes to update.'),
+              content: Text(l.photoSelectedSaveChanges),
               backgroundColor: AppColors.secondary,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -200,6 +242,7 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final userAsync = ref.watch(currentUserDataProvider);
 
     return Scaffold(
@@ -211,9 +254,9 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
           icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Personal Information',
-          style: TextStyle(
+        title: Text(
+          l.personalInformation,
+          style: const TextStyle(
             color: AppColors.textPrimary,
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -305,16 +348,16 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
                   const SizedBox(height: 32),
 
                   // Basic Info Section
-                  _buildSectionHeader('Basic Information'),
+                  _buildSectionHeader(l.basicInformation),
                   const SizedBox(height: 16),
                   _buildTextField(
                     controller: _nameController,
-                    label: 'Full Name',
+                    label: l.fullName,
                     icon: Icons.person_rounded,
                     enabled: _isEditing,
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Name is required';
+                        return l.nameIsRequired;
                       }
                       return null;
                     },
@@ -322,16 +365,16 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
                   const SizedBox(height: 16),
                   _buildTextField(
                     controller: _emailController,
-                    label: 'Email Address',
+                    label: l.emailAddress,
                     icon: Icons.email_rounded,
                     enabled: _isEditing,
                     keyboardType: TextInputType.emailAddress,
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
-                        return 'Email is required';
+                        return l.emailIsRequired;
                       }
                       if (!value.contains('@')) {
-                        return 'Enter a valid email';
+                        return l.enterValidEmail;
                       }
                       return null;
                     },
@@ -339,7 +382,7 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
                   const SizedBox(height: 16),
                   _buildTextField(
                     controller: _phoneController,
-                    label: 'Phone Number',
+                    label: l.phoneNumber,
                     icon: Icons.phone_rounded,
                     enabled: false, // Phone can't be changed
                     keyboardType: TextInputType.phone,
@@ -348,10 +391,10 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
                   const SizedBox(height: 32),
 
                   // Emergency Contact Section
-                  _buildSectionHeader('Emergency Contact'),
+                  _buildSectionHeader(l.emergencyContact),
                   const SizedBox(height: 8),
                   Text(
-                    'This person will be notified in case of emergency during a trip',
+                    l.thisPersonWillBeNotified,
                     style: TextStyle(
                       fontSize: 13,
                       color: AppColors.textSecondary,
@@ -360,14 +403,14 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
                   const SizedBox(height: 16),
                   _buildTextField(
                     controller: _emergencyNameController,
-                    label: 'Contact Name',
+                    label: l.contactName,
                     icon: Icons.person_outline_rounded,
                     enabled: _isEditing,
                   ),
                   const SizedBox(height: 16),
                   _buildTextField(
                     controller: _emergencyPhoneController,
-                    label: 'Contact Phone',
+                    label: l.contactPhone,
                     icon: Icons.phone_outlined,
                     enabled: _isEditing,
                     keyboardType: TextInputType.phone,
@@ -376,17 +419,17 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
                   const SizedBox(height: 32),
 
                   // Account Info (read-only)
-                  _buildSectionHeader('Account Info'),
+                  _buildSectionHeader(l.accountInfo),
                   const SizedBox(height: 16),
                   _buildInfoRow(
-                    'Member Since',
+                    l.memberSince,
                     _formatDate(user?.createdAt),
                     Icons.calendar_today_rounded,
                   ),
                   const SizedBox(height: 12),
                   _buildInfoRow(
-                    'Verification',
-                    user?.isVerified == true ? 'Verified' : 'Not Verified',
+                    l.verification,
+                    user?.isVerified == true ? l.verified : l.notVerified,
                     Icons.verified_rounded,
                     valueColor: user?.isVerified == true
                         ? AppColors.secondary
@@ -394,8 +437,8 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
                   ),
                   const SizedBox(height: 12),
                   _buildInfoRow(
-                    'Account Status',
-                    user?.isActive == true ? 'Active' : 'Inactive',
+                    l.accountStatus,
+                    user?.isActive == true ? l.active : 'Inactive',
                     Icons.circle,
                     valueColor: user?.isActive == true
                         ? AppColors.secondary
@@ -426,9 +469,9 @@ class _PersonalInfoScreenState extends ConsumerState<PersonalInfoScreen> {
                                   color: Colors.white,
                                 ),
                               )
-                            : const Text(
-                                'Save Changes',
-                                style: TextStyle(
+                            : Text(
+                                l.saveChanges,
+                                style: const TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                 ),

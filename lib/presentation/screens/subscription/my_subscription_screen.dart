@@ -4,12 +4,15 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/animations/staggered_animation.dart';
 import '../../../data/providers/providers.dart';
 import '../../../data/models/subscription_model.dart';
+import '../../../core/enums/enum_l10n.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 class MySubscriptionScreen extends ConsumerWidget {
   const MySubscriptionScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
     final subscriptionAsync = ref.watch(activeSubscriptionProvider);
 
     return Scaffold(
@@ -28,9 +31,9 @@ class MySubscriptionScreen extends ConsumerWidget {
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'My Subscription',
-          style: TextStyle(
+        title: Text(
+          l.mySubscription,
+          style: const TextStyle(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
@@ -51,6 +54,8 @@ class MySubscriptionScreen extends ConsumerWidget {
   }
 
   Widget _buildNoSubscription(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -70,9 +75,9 @@ class MySubscriptionScreen extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
-              'No Active Subscription',
-              style: TextStyle(
+            Text(
+              l.noActiveSubscription,
+              style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textPrimary,
@@ -80,7 +85,7 @@ class MySubscriptionScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Subscribe to a plan to start your daily commute',
+              l.subscribeToEnjoy,
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 15,
@@ -99,9 +104,9 @@ class MySubscriptionScreen extends ConsumerWidget {
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
-                child: const Text(
-                  'View Plans',
-                  style: TextStyle(
+                child: Text(
+                  l.viewPlans,
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
@@ -124,19 +129,19 @@ class MySubscriptionScreen extends ConsumerWidget {
         staggerDelay: const Duration(milliseconds: 60),
         children: [
           // Plan Card
-          _buildPlanCard(subscription),
+          _buildPlanCard(context, subscription),
           const SizedBox(height: 20),
 
           // Usage Stats
-          _buildUsageCard(subscription),
+          _buildUsageCard(context, subscription),
           const SizedBox(height: 20),
 
           // Schedule Summary
-          _buildScheduleCard(subscription),
+          _buildScheduleCard(context, subscription),
           const SizedBox(height: 20),
 
           // Billing Info
-          _buildBillingCard(subscription),
+          _buildBillingCard(context, subscription),
           const SizedBox(height: 24),
 
           // Actions
@@ -147,7 +152,9 @@ class MySubscriptionScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildPlanCard(SubscriptionModel subscription) {
+  Widget _buildPlanCard(BuildContext context, SubscriptionModel subscription) {
+    final l = AppLocalizations.of(context)!;
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -218,9 +225,9 @@ class MySubscriptionScreen extends ConsumerWidget {
           const SizedBox(height: 24),
           Row(
             children: [
-              _buildPlanDetail(Icons.directions_car_rounded, subscription.vehicleType.displayName),
+              _buildPlanDetail(Icons.directions_car_rounded, subscription.vehicleType.localizedName(l)),
               const SizedBox(width: 20),
-              _buildPlanDetail(Icons.calendar_today_rounded, '${subscription.daysRemaining} days left'),
+              _buildPlanDetail(Icons.calendar_today_rounded, '${subscription.daysRemaining} ${l.daysLeft.toLowerCase()}'),
             ],
           ),
         ],
@@ -245,7 +252,8 @@ class MySubscriptionScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildUsageCard(SubscriptionModel subscription) {
+  Widget _buildUsageCard(BuildContext context, SubscriptionModel subscription) {
+    final l = AppLocalizations.of(context)!;
     final progress = subscription.totalTrips > 0
         ? subscription.usedTrips / subscription.totalTrips
         : 0.0;
@@ -269,9 +277,9 @@ class MySubscriptionScreen extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Trip Usage',
-                style: TextStyle(
+              Text(
+                l.tripsLeft,
+                style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: AppColors.textSecondary,
@@ -304,14 +312,14 @@ class MySubscriptionScreen extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '${subscription.remainingTrips} trips remaining',
+                l.tripsRemaining(subscription.remainingTrips),
                 style: TextStyle(
                   fontSize: 13,
                   color: AppColors.textSecondary,
                 ),
               ),
               Text(
-                '${(progress * 100).toStringAsFixed(0)}% used',
+                '${(progress * 100).toStringAsFixed(0)}%',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -325,7 +333,9 @@ class MySubscriptionScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildScheduleCard(SubscriptionModel subscription) {
+  Widget _buildScheduleCard(BuildContext context, SubscriptionModel subscription) {
+    final l = AppLocalizations.of(context)!;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -342,26 +352,26 @@ class MySubscriptionScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Schedule',
-            style: TextStyle(
+          Text(
+            l.schedule,
+            style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: AppColors.textSecondary,
             ),
           ),
           const SizedBox(height: 14),
-          _buildScheduleRow(Icons.calendar_today_rounded, 'Days', subscription.schedule.formattedActiveDays),
+          _buildScheduleRow(Icons.calendar_today_rounded, l.daysLabel, subscription.schedule.formattedActiveDays),
           const SizedBox(height: 10),
-          _buildScheduleRow(Icons.access_time_rounded, 'Morning Pickup', subscription.schedule.formattedPickupTime),
+          _buildScheduleRow(Icons.access_time_rounded, l.morningPickup, subscription.schedule.formattedPickupTime),
           if (subscription.schedule.returnPickupTime != null) ...[
             const SizedBox(height: 10),
-            _buildScheduleRow(Icons.access_time_rounded, 'Evening Return', subscription.schedule.formattedReturnTime),
+            _buildScheduleRow(Icons.access_time_rounded, l.eveningReturn, subscription.schedule.formattedReturnTime),
           ],
           const SizedBox(height: 10),
-          _buildScheduleRow(Icons.location_on_rounded, 'From', subscription.schedule.pickupLocation.title),
+          _buildScheduleRow(Icons.location_on_rounded, l.pickup, subscription.schedule.pickupLocation.title),
           const SizedBox(height: 10),
-          _buildScheduleRow(Icons.flag_rounded, 'To', subscription.schedule.dropoffLocation.title),
+          _buildScheduleRow(Icons.flag_rounded, l.dropoff, subscription.schedule.dropoffLocation.title),
         ],
       ),
     );
@@ -394,7 +404,9 @@ class MySubscriptionScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildBillingCard(SubscriptionModel subscription) {
+  Widget _buildBillingCard(BuildContext context, SubscriptionModel subscription) {
+    final l = AppLocalizations.of(context)!;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -411,9 +423,9 @@ class MySubscriptionScreen extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Billing',
-            style: TextStyle(
+          Text(
+            l.billing,
+            style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: AppColors.textSecondary,
@@ -422,7 +434,7 @@ class MySubscriptionScreen extends ConsumerWidget {
           const SizedBox(height: 14),
           _buildBillingRow('Monthly Price', 'SAR ${subscription.finalPrice.toStringAsFixed(0)}'),
           if (subscription.discount > 0)
-            _buildBillingRow('Discount', '-SAR ${subscription.discount.toStringAsFixed(0)}'),
+            _buildBillingRow(l.discount, '-SAR ${subscription.discount.toStringAsFixed(0)}'),
           const Divider(height: 20),
           _buildBillingRow(
             'Next Billing',
@@ -457,6 +469,8 @@ class MySubscriptionScreen extends ConsumerWidget {
   }
 
   Widget _buildActions(BuildContext context, SubscriptionModel subscription) {
+    final l = AppLocalizations.of(context)!;
+
     return Column(
       children: [
         SizedBox(
@@ -469,9 +483,9 @@ class MySubscriptionScreen extends ConsumerWidget {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
             icon: const Icon(Icons.upgrade_rounded, color: Colors.white, size: 20),
-            label: const Text(
-              'Upgrade Plan',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white),
+            label: Text(
+              l.upgrade,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white),
             ),
           ),
         ),
@@ -487,9 +501,9 @@ class MySubscriptionScreen extends ConsumerWidget {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
             icon: const Icon(Icons.pause_circle_rounded, size: 20),
-            label: const Text(
-              'Pause Subscription',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            label: Text(
+              l.pause,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
             ),
           ),
         ),
@@ -505,9 +519,9 @@ class MySubscriptionScreen extends ConsumerWidget {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
             icon: const Icon(Icons.cancel_rounded, size: 20),
-            label: const Text(
-              'Cancel Subscription',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            label: Text(
+              l.cancelSubscription,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
             ),
           ),
         ),
@@ -524,6 +538,7 @@ class MySubscriptionScreen extends ConsumerWidget {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
+            final l = AppLocalizations.of(context)!;
             return Container(
               decoration: const BoxDecoration(
                 color: Colors.white,
@@ -553,9 +568,9 @@ class MySubscriptionScreen extends ConsumerWidget {
                       child: const Icon(Icons.pause_circle_rounded, color: AppColors.warning, size: 32),
                     ),
                     const SizedBox(height: 16),
-                    const Text(
-                      'Pause Subscription',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    Text(
+                      l.pause,
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -564,11 +579,11 @@ class MySubscriptionScreen extends ConsumerWidget {
                       style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
                     ),
                     const SizedBox(height: 24),
-                    const Align(
+                    Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        'Pause Duration',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                        l.duration,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -644,7 +659,7 @@ class MySubscriptionScreen extends ConsumerWidget {
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               side: BorderSide(color: AppColors.divider),
                             ),
-                            child: const Text('Never Mind'),
+                            child: Text(l.cancel),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -668,7 +683,7 @@ class MySubscriptionScreen extends ConsumerWidget {
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               elevation: 0,
                             ),
-                            child: const Text('Pause Now', style: TextStyle(fontWeight: FontWeight.w600)),
+                            child: Text(l.confirm, style: const TextStyle(fontWeight: FontWeight.w600)),
                           ),
                         ),
                       ],
@@ -708,6 +723,7 @@ class MySubscriptionScreen extends ConsumerWidget {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
+            final l = AppLocalizations.of(context)!;
             return Container(
               height: MediaQuery.of(context).size.height * 0.7,
               decoration: const BoxDecoration(
@@ -737,9 +753,9 @@ class MySubscriptionScreen extends ConsumerWidget {
                       child: const Icon(Icons.cancel_rounded, color: AppColors.error, size: 32),
                     ),
                     const SizedBox(height: 16),
-                    const Text(
-                      'Cancel Subscription',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    Text(
+                      l.cancelSubscription,
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -834,7 +850,7 @@ class MySubscriptionScreen extends ConsumerWidget {
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               side: BorderSide(color: AppColors.divider),
                             ),
-                            child: const Text('Keep Subscription'),
+                            child: Text(l.keepTrip),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -845,7 +861,7 @@ class MySubscriptionScreen extends ConsumerWidget {
                               Navigator.pop(screenContext);
                               ScaffoldMessenger.of(screenContext).showSnackBar(
                                 SnackBar(
-                                  content: const Text('Subscription cancelled'),
+                                  content: Text(l.cancelled),
                                   backgroundColor: AppColors.error,
                                   behavior: SnackBarBehavior.floating,
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -860,7 +876,7 @@ class MySubscriptionScreen extends ConsumerWidget {
                               elevation: 0,
                               disabledBackgroundColor: AppColors.error.withValues(alpha: 0.3),
                             ),
-                            child: const Text('Cancel Now', style: TextStyle(fontWeight: FontWeight.w600)),
+                            child: Text(l.cancel, style: const TextStyle(fontWeight: FontWeight.w600)),
                           ),
                         ),
                       ],

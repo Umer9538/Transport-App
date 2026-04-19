@@ -1,6 +1,8 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../l10n/generated/app_localizations.dart';
+import '../../../data/providers/providers.dart';
 
 class ChatMessage {
   final String text;
@@ -11,18 +13,18 @@ class ChatMessage {
       : time = time ?? DateTime.now();
 }
 
-class LiveChatScreen extends StatefulWidget {
+class LiveChatScreen extends ConsumerStatefulWidget {
   const LiveChatScreen({super.key});
 
   @override
-  State<LiveChatScreen> createState() => _LiveChatScreenState();
+  ConsumerState<LiveChatScreen> createState() => _LiveChatScreenState();
 }
 
-class _LiveChatScreenState extends State<LiveChatScreen> {
+class _LiveChatScreenState extends ConsumerState<LiveChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final List<ChatMessage> _messages = [];
-  bool _isAgentTyping = false;
+  String? _chatId;
+  bool _isLoadingChat = true;
 
   final List<String> _quickReplies = [
     'Trip issue',
@@ -31,29 +33,26 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
     'Cancel trip',
   ];
 
-  final Map<String, String> _autoResponses = {
-    'trip': 'I can help with your trip! Could you please share your trip ID or the date of the trip you need help with?',
-    'bill': 'For billing inquiries, I can check your recent transactions. Could you describe the issue you\'re seeing?',
-    'cancel': 'I understand you want to cancel. You can cancel trips from the Schedule screen up to 2 hours before pickup. Would you like me to guide you through it?',
-    'account': 'I\'d be happy to help with your account. What would you like to do - update info, change password, or something else?',
-    'driver': 'For driver-related concerns, please provide the trip date so I can look into it. Was there a safety issue?',
-    'refund': 'Refund requests are reviewed within 24-48 hours. I\'ll create a ticket for you. Can you share the trip date and amount?',
-  };
-
   @override
   void initState() {
     super.initState();
-    // Welcome message
-    Future.delayed(const Duration(milliseconds: 500), () {
+    _initChat();
+  }
+
+  Future<void> _initChat() async {
+    try {
+      final chatId = await ref.read(chatIdProvider.future);
       if (mounted) {
         setState(() {
-          _messages.add(ChatMessage(
-            text: 'Hello! 👋 Welcome to DriverApp support. How can I help you today?',
-            isUser: false,
-          ));
+          _chatId = chatId;
+          _isLoadingChat = false;
         });
       }
-    });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingChat = false);
+      }
+    }
   }
 
   @override
@@ -63,40 +62,23 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
     super.dispose();
   }
 
-  void _sendMessage(String text) {
-    if (text.trim().isEmpty) return;
+  void _sendMessage(String text) async {
+    if (text.trim().isEmpty || _chatId == null) return;
 
-    setState(() {
-      _messages.add(ChatMessage(text: text.trim(), isUser: true));
-      _messageController.clear();
-    });
+    final user = ref.read(currentUserProvider);
+    if (user == null) return;
+
+    _messageController.clear();
+
+    final firestoreService = ref.read(firestoreServiceProvider);
+    await firestoreService.sendChatMessage(
+      chatId: _chatId!,
+      senderId: user.uid,
+      message: text.trim(),
+      isUser: true,
+    );
 
     _scrollToBottom();
-
-    // Simulate agent response
-    setState(() => _isAgentTyping = true);
-    Timer(Duration(milliseconds: 1000 + (text.length * 20)), () {
-      if (mounted) {
-        setState(() {
-          _isAgentTyping = false;
-          _messages.add(ChatMessage(
-            text: _getResponse(text),
-            isUser: false,
-          ));
-        });
-        _scrollToBottom();
-      }
-    });
-  }
-
-  String _getResponse(String input) {
-    final lower = input.toLowerCase();
-    for (final entry in _autoResponses.entries) {
-      if (lower.contains(entry.key)) {
-        return entry.value;
-      }
-    }
-    return 'Thank you for reaching out. Let me look into this for you. A support specialist will follow up shortly. Is there anything else I can help with?';
   }
 
   void _scrollToBottom() {
@@ -113,6 +95,31 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+
+    // Stream messages from Firestore when chatId is available
+    final List<ChatMessage> messages = [];
+    bool isLoading = _isLoadingChat;
+
+    if (_chatId != null) {
+      final messagesAsync = ref.watch(chatMessagesProvider(_chatId!));
+      messagesAsync.when(
+        data: (msgList) {
+          for (final msg in msgList) {
+            messages.add(ChatMessage(
+              text: msg['message'] ?? '',
+              isUser: msg['isUser'] ?? false,
+              time: msg['timestamp'] != null
+                  ? (msg['timestamp'] as dynamic).toDate()
+                  : DateTime.now(),
+            ));
+          }
+        },
+        loading: () => isLoading = true,
+        error: (_, __) {},
+      );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -137,9 +144,9 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Support Agent',
-                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                Text(
+                  l.supportAgent,
+                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
                 ),
                 Row(
                   children: [
@@ -153,7 +160,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      _isAgentTyping ? 'Typing...' : 'Online',
+                      l.online,
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.8),
                         fontSize: 12,
@@ -172,101 +179,100 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Messages
-          Expanded(
-            child: ListView.builder(
-              controller: _scrollController,
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              itemCount: _messages.length + (_isAgentTyping ? 1 : 0),
-              itemBuilder: (context, index) {
-                if (index == _messages.length && _isAgentTyping) {
-                  return _buildTypingIndicator();
-                }
-                return _buildMessageBubble(_messages[index]);
-              },
-            ),
-          ),
-
-          // Quick replies (shown when few messages)
-          if (_messages.length <= 2)
-            SizedBox(
-              height: 44,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: _quickReplies.length,
-                itemBuilder: (context, index) {
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ActionChip(
-                      label: Text(_quickReplies[index]),
-                      onPressed: () => _sendMessage(_quickReplies[index]),
-                      backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                      labelStyle: const TextStyle(color: AppColors.primary, fontSize: 13),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-
-          // Input
-          Container(
-            padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + 12),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: Row(
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
               children: [
+                // Messages
                 Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.inputBackground,
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: TextField(
-                      controller: _messageController,
-                      textCapitalization: TextCapitalization.sentences,
-                      decoration: InputDecoration(
-                        hintText: 'Type a message...',
-                        hintStyle: TextStyle(color: AppColors.textHint, fontSize: 14),
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      ),
-                      onSubmitted: _sendMessage,
-                    ),
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) {
+                      return _buildMessageBubble(messages[index]);
+                    },
                   ),
                 ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: () => _sendMessage(_messageController.text),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: const BoxDecoration(
-                      color: AppColors.primary,
-                      shape: BoxShape.circle,
+
+                // Quick replies (shown when few messages)
+                if (messages.length <= 2)
+                  SizedBox(
+                    height: 44,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: _quickReplies.length,
+                      itemBuilder: (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ActionChip(
+                            label: Text(_quickReplies[index]),
+                            onPressed: () => _sendMessage(_quickReplies[index]),
+                            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                            labelStyle: const TextStyle(color: AppColors.primary, fontSize: 13),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                              side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                    child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                  ),
+
+                // Input
+                Container(
+                  padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).padding.bottom + 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, -2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: AppColors.inputBackground,
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: TextField(
+                            controller: _messageController,
+                            textCapitalization: TextCapitalization.sentences,
+                            decoration: InputDecoration(
+                              hintText: 'Type a message...',
+                              hintStyle: TextStyle(color: AppColors.textHint, fontSize: 14),
+                              border: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                            ),
+                            onSubmitted: _sendMessage,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () => _sendMessage(_messageController.text),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: const BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -323,47 +329,6 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
     );
   }
 
-  Widget _buildTypingIndicator() {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10, right: 60),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 5,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: List.generate(3, (index) {
-            return TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: 1),
-              duration: Duration(milliseconds: 600 + (index * 200)),
-              builder: (context, value, child) {
-                return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 2),
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: AppColors.textHint.withValues(alpha: 0.3 + (value * 0.5)),
-                    shape: BoxShape.circle,
-                  ),
-                );
-              },
-            );
-          }),
-        ),
-      ),
-    );
-  }
-
   String _formatTime(DateTime time) {
     final hour = time.hour > 12 ? time.hour - 12 : time.hour;
     final amPm = time.hour >= 12 ? 'PM' : 'AM';
@@ -372,6 +337,7 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
   }
 
   void _showChatOptions() {
+    final l = AppLocalizations.of(context)!;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -396,20 +362,19 @@ class _LiveChatScreenState extends State<LiveChatScreen> {
               const SizedBox(height: 16),
               ListTile(
                 leading: const Icon(Icons.delete_sweep_rounded),
-                title: const Text('Clear Chat'),
+                title: Text(l.clearChat),
                 onTap: () {
                   Navigator.pop(ctx);
-                  setState(() => _messages.clear());
                 },
               ),
               ListTile(
                 leading: const Icon(Icons.email_rounded),
-                title: const Text('Email Transcript'),
+                title: Text(l.emailTranscript),
                 onTap: () {
                   Navigator.pop(ctx);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: const Text('Chat transcript sent to your email'),
+                      content: Text(l.chatTranscriptSent),
                       backgroundColor: AppColors.secondary,
                       behavior: SnackBarBehavior.floating,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

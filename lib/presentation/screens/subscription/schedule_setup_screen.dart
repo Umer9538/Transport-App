@@ -6,6 +6,7 @@ import '../../../core/animations/fade_animation.dart';
 import '../../../core/animations/staggered_animation.dart';
 import '../../../data/models/address_model.dart';
 import '../../widgets/common/animated_button.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 class ScheduleSetupScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic>? arguments;
@@ -34,8 +35,29 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
   AddressModel? _pickupAddress;
   AddressModel? _dropoffAddress;
 
+  String _localizedDayFullName(AppLocalizations l, DayOfWeek day) {
+    switch (day) {
+      case DayOfWeek.monday:
+        return l.monday;
+      case DayOfWeek.tuesday:
+        return l.tuesday;
+      case DayOfWeek.wednesday:
+        return l.wednesday;
+      case DayOfWeek.thursday:
+        return l.thursday;
+      case DayOfWeek.friday:
+        return l.friday;
+      case DayOfWeek.saturday:
+        return l.saturday;
+      case DayOfWeek.sunday:
+        return l.sunday;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -59,8 +81,8 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
           },
         ),
         title: Text(
-          'Setup Schedule',
-          style: TextStyle(
+          l.setupSchedule,
+          style: const TextStyle(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
@@ -130,13 +152,15 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
   }
 
   Widget _buildDaySelectionStep() {
+    final l = AppLocalizations.of(context)!;
+
     return StaggeredList(
       baseDelay: const Duration(milliseconds: 100),
       staggerDelay: const Duration(milliseconds: 50),
       children: [
-        const Text(
-          'Select Your\nCommute Days',
-          style: TextStyle(
+        Text(
+          l.selectYourCommuteDays,
+          style: const TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
@@ -145,7 +169,7 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Choose the days you need transportation',
+          l.chooseTransportationDays,
           style: TextStyle(
             fontSize: 16,
             color: AppColors.textSecondary,
@@ -156,7 +180,7 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
         // Quick select options
         Row(
           children: [
-            _buildQuickSelectChip('Weekdays', () {
+            _buildQuickSelectChip(l.weekdays, () {
               setState(() {
                 _selectedDays.clear();
                 _selectedDays.addAll([
@@ -169,14 +193,14 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
               });
             }),
             const SizedBox(width: 12),
-            _buildQuickSelectChip('All Week', () {
+            _buildQuickSelectChip(l.allWeek, () {
               setState(() {
                 _selectedDays.clear();
                 _selectedDays.addAll(DayOfWeek.values);
               });
             }),
             const SizedBox(width: 12),
-            _buildQuickSelectChip('Clear', () {
+            _buildQuickSelectChip(l.clear, () {
               setState(() => _selectedDays.clear());
             }),
           ],
@@ -203,7 +227,7 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    '${_selectedDays.length} days selected • ${_selectedDays.length * 2} trips per week',
+                    l.daysSelectedTrips(_selectedDays.length, _selectedDays.length * 2),
                     style: const TextStyle(
                       color: AppColors.primary,
                       fontWeight: FontWeight.w500,
@@ -240,6 +264,7 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
   }
 
   Widget _buildDayTile(DayOfWeek day) {
+    final l = AppLocalizations.of(context)!;
     final isSelected = _selectedDays.contains(day);
 
     return Padding(
@@ -290,7 +315,7 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
               ),
               const SizedBox(width: 16),
               Text(
-                day.fullName,
+                _localizedDayFullName(l, day),
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -315,13 +340,15 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
   }
 
   Widget _buildTimeSelectionStep() {
+    final l = AppLocalizations.of(context)!;
+
     return StaggeredList(
       baseDelay: const Duration(milliseconds: 100),
       staggerDelay: const Duration(milliseconds: 50),
       children: [
-        const Text(
-          'Set Your\nPickup Times',
-          style: TextStyle(
+        Text(
+          l.setYourPickupTimes,
+          style: const TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
@@ -330,7 +357,7 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          'When should we pick you up?',
+          l.whenPickupQuestion,
           style: TextStyle(
             fontSize: 16,
             color: AppColors.textSecondary,
@@ -340,8 +367,8 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
 
         // Morning pickup
         _buildTimeCard(
-          title: 'Morning Pickup',
-          subtitle: 'Going to work/school',
+          title: l.morningPickup,
+          subtitle: l.goingToWork,
           icon: Icons.wb_sunny_rounded,
           iconColor: AppColors.warning,
           time: _pickupTime,
@@ -372,10 +399,10 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
               children: [
                 const Icon(Icons.repeat_rounded, color: AppColors.textSecondary),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Text(
-                    'Include return trip',
-                    style: TextStyle(
+                    l.includeReturnTrip,
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                     ),
@@ -400,8 +427,8 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
             delay: const Duration(milliseconds: 100),
             slideOffset: const Offset(0, 0.3),
             child: _buildTimeCard(
-              title: 'Evening Return',
-              subtitle: 'Going back home',
+              title: l.eveningReturn,
+              subtitle: l.goingBackHome,
               icon: Icons.nights_stay_rounded,
               iconColor: AppColors.primaryDark,
               time: _returnTime,
@@ -433,7 +460,7 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Your driver will arrive 5-10 minutes before the scheduled time to ensure you\'re never late.',
+                  l.driverArrivalNotice,
                   style: TextStyle(
                     color: AppColors.info,
                     fontSize: 14,
@@ -545,13 +572,15 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
   }
 
   Widget _buildLocationSelectionStep() {
+    final l = AppLocalizations.of(context)!;
+
     return StaggeredList(
       baseDelay: const Duration(milliseconds: 100),
       staggerDelay: const Duration(milliseconds: 50),
       children: [
-        const Text(
-          'Set Your\nLocations',
-          style: TextStyle(
+        Text(
+          l.setYourLocations,
+          style: const TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
@@ -560,7 +589,7 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Where should we pick you up and drop you off?',
+          l.pickupDropoffQuestion,
           style: TextStyle(
             fontSize: 16,
             color: AppColors.textSecondary,
@@ -570,8 +599,8 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
 
         // Pickup location
         _buildLocationCard(
-          title: 'Pickup Location',
-          subtitle: _pickupAddress?.address ?? 'Tap to set your pickup point',
+          title: l.pickupLocation,
+          subtitle: _pickupAddress?.address ?? l.tapToSetPickup,
           icon: Icons.trip_origin_rounded,
           iconColor: AppColors.primary,
           isSet: _pickupAddress != null,
@@ -598,8 +627,8 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
 
         // Dropoff location
         _buildLocationCard(
-          title: 'Drop-off Location',
-          subtitle: _dropoffAddress?.address ?? 'Tap to set your destination',
+          title: l.dropoffLocation,
+          subtitle: _dropoffAddress?.address ?? l.tapToSetDestination,
           icon: Icons.location_on_rounded,
           iconColor: AppColors.secondary,
           isSet: _dropoffAddress != null,
@@ -626,9 +655,9 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Schedule Summary',
-                style: TextStyle(
+              Text(
+                l.scheduleSummary,
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary,
@@ -637,27 +666,27 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
               const SizedBox(height: 16),
               _buildSummaryRow(
                 icon: Icons.calendar_today_rounded,
-                label: 'Days',
+                label: l.daysLabel,
                 value: _selectedDays.map((d) => d.shortName).join(', '),
               ),
               const SizedBox(height: 12),
               _buildSummaryRow(
                 icon: Icons.access_time_rounded,
-                label: 'Morning',
+                label: l.morningLabel,
                 value: _formatTime(_pickupTime),
               ),
               if (_hasReturnTrip) ...[
                 const SizedBox(height: 12),
                 _buildSummaryRow(
                   icon: Icons.access_time_rounded,
-                  label: 'Evening',
+                  label: l.eveningLabel,
                   value: _formatTime(_returnTime),
                 ),
               ],
               const SizedBox(height: 12),
               _buildSummaryRow(
                 icon: Icons.repeat_rounded,
-                label: 'Trips/Week',
+                label: l.tripsPerWeek,
                 value: '${_selectedDays.length * (_hasReturnTrip ? 2 : 1)}',
               ),
             ],
@@ -774,6 +803,7 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
   }
 
   Widget _buildBottomButton() {
+    final l = AppLocalizations.of(context)!;
     final canProceed = _currentStep == 0
         ? _selectedDays.isNotEmpty
         : _currentStep == 1
@@ -798,7 +828,7 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
         ],
       ),
       child: AnimatedButton(
-        text: _currentStep == 2 ? 'Review & Pay' : 'Continue',
+        text: _currentStep == 2 ? l.reviewAndPay : l.continueBtn,
         onPressed: canProceed
             ? () {
                 if (_currentStep < 2) {
@@ -829,6 +859,7 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) {
+        final sheetL = AppLocalizations.of(context)!;
         return Container(
           height: MediaQuery.of(context).size.height * 0.7,
           decoration: const BoxDecoration(
@@ -852,7 +883,7 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      isPickup ? 'Set Pickup Location' : 'Set Drop-off Location',
+                      isPickup ? sheetL.setPickupLocation : sheetL.setDropoffLocation,
                       style: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
@@ -861,7 +892,7 @@ class _ScheduleSetupScreenState extends ConsumerState<ScheduleSetupScreen> {
                     const SizedBox(height: 16),
                     TextField(
                       decoration: InputDecoration(
-                        hintText: 'Search for a location...',
+                        hintText: sheetL.searchForLocation,
                         prefixIcon: const Icon(Icons.search_rounded),
                         filled: true,
                         fillColor: AppColors.inputBackground,

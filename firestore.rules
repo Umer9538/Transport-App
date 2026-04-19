@@ -1,0 +1,239 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ============================================================
+    // HELPER FUNCTIONS
+    // ============================================================
+
+    // Check if the request is from an authenticated user
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if the authenticated user is the document owner
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Check if the user has a specific role
+    function hasRole(role) {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+
+    // Check if the user is an admin
+    function isAdmin() {
+      return hasRole('admin');
+    }
+
+    // Check if the user is a driver
+    function isDriver() {
+      return hasRole('driver');
+    }
+
+    // Validate required string field
+    function isNonEmptyString(field) {
+      return field is string && field.size() > 0;
+    }
+
+    // ============================================================
+    // USERS COLLECTION
+    // ============================================================
+    match /users/{userId} {
+      // Users can read their own profile
+      // Drivers can read user profiles (for trip info)
+      // Admins can read all profiles
+      allow read: if isOwner(userId) || isDriver() || isAdmin();
+
+      // Users can create their own profile during registration
+      allow create: if isOwner(userId) &&
+        isNonEmptyString(request.resource.data.name) &&
+        isNonEmptyString(request.resource.data.phone);
+
+      // Users can update their own profile (specific fields only)
+      // Admins can update any user profile
+      allow update: if isOwner(userId) || isAdmin();
+
+      // Only admins can delete users
+      // Users can delete their own account
+      allow delete: if isOwner(userId) || isAdmin();
+
+      // Payment methods subcollection
+      match /paymentMethods/{methodId} {
+        allow read, write: if isOwner(userId);
+        allow read: if isAdmin();
+      }
+    }
+
+    // ============================================================
+    // PLANS COLLECTION
+    // ============================================================
+    match /plans/{planId} {
+      // All authenticated users can read plans
+      allow read: if isAuthenticated();
+
+      // Only admins can create/update/delete plans
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ============================================================
+    // SUBSCRIPTIONS COLLECTION
+    // ============================================================
+    match /subscriptions/{subscriptionId} {
+      // Users can read their own subscriptions
+      // Admins can read all subscriptions
+      allow read: if isAuthenticated() &&
+        (resource.data.userId == request.auth.uid || isAdmin());
+
+      // Users can create subscriptions for themselves
+      allow create: if isAuthenticated() &&
+        request.resource.data.userId == request.auth.uid;
+
+      // Users can update their own subscriptions (pause/cancel)
+      // Admins can update any subscription
+      allow update: if isAuthenticated() &&
+        (resource.data.userId == request.auth.uid || isAdmin());
+
+      // Only admins can delete subscriptions
+      allow delete: if isAdmin();
+    }
+
+    // ============================================================
+    // TRIPS COLLECTION
+    // ============================================================
+    match /trips/{tripId} {
+      // Users can read their own trips
+      // Drivers can read trips assigned to them
+      // Admins can read all trips
+      allow read: if isAuthenticated() &&
+        (resource.data.userId == request.auth.uid ||
+         resource.data.driverId == request.auth.uid ||
+         isAdmin());
+
+      // System/admin creates trips (via Cloud Functions or admin panel)
+      // Users can create trips linked to their subscriptions
+      allow create: if isAuthenticated() &&
+        (request.resource.data.userId == request.auth.uid || isAdmin());
+
+      // Users can update their own trips (cancel, rate)
+      // Drivers can update trips assigned to them (status, location)
+      // Admins can update any trip
+      allow update: if isAuthenticated() &&
+        (resource.data.userId == request.auth.uid ||
+         resource.data.driverId == request.auth.uid ||
+         isAdmin());
+
+      // Only admins can delete trips
+      allow delete: if isAdmin();
+    }
+
+    // ============================================================
+    // NOTIFICATIONS COLLECTION
+    // ============================================================
+    match /notifications/{notificationId} {
+      // Users can read their own notifications
+      allow read: if isAuthenticated() &&
+        resource.data.userId == request.auth.uid;
+
+      // System/Cloud Functions create notifications
+      // Admins can create notifications for any user
+      allow create: if isAdmin();
+
+      // Users can update their own notifications (mark as read)
+      allow update: if isAuthenticated() &&
+        resource.data.userId == request.auth.uid;
+
+      // Users can delete their own notifications
+      allow delete: if isAuthenticated() &&
+        resource.data.userId == request.auth.uid;
+    }
+
+    // ============================================================
+    // PAYMENTS COLLECTION
+    // ============================================================
+    match /payments/{paymentId} {
+      // Users can read their own payments
+      // Admins can read all payments
+      allow read: if isAuthenticated() &&
+        (resource.data.userId == request.auth.uid || isAdmin());
+
+      // Users can create payment records for themselves
+      allow create: if isAuthenticated() &&
+        request.resource.data.userId == request.auth.uid;
+
+      // Only admins can update/delete payments
+      allow update, delete: if isAdmin();
+    }
+
+    // ============================================================
+    // CHATS COLLECTION
+    // ============================================================
+    match /chats/{chatId} {
+      // Users can read their own chats
+      // Admins can read all chats
+      allow read: if isAuthenticated() &&
+        (resource.data.userId == request.auth.uid || isAdmin());
+
+      // Users can create chats for themselves
+      allow create: if isAuthenticated() &&
+        request.resource.data.userId == request.auth.uid;
+
+      // Users and admins can update chat metadata
+      allow update: if isAuthenticated() &&
+        (resource.data.userId == request.auth.uid || isAdmin());
+
+      allow delete: if isAdmin();
+
+      // Chat messages subcollection
+      match /messages/{messageId} {
+        // Users can read messages in their own chats
+        // Admins can read all messages
+        allow read: if isAuthenticated() &&
+          (get(/databases/$(database)/documents/chats/$(chatId)).data.userId == request.auth.uid ||
+           isAdmin());
+
+        // Users can send messages to their own chats
+        // Admins can send messages to any chat
+        allow create: if isAuthenticated() &&
+          (get(/databases/$(database)/documents/chats/$(chatId)).data.userId == request.auth.uid ||
+           isAdmin());
+
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    // ============================================================
+    // PROMO CODES COLLECTION
+    // ============================================================
+    match /promoCodes/{promoId} {
+      // All authenticated users can read promo codes
+      allow read: if isAuthenticated();
+
+      // Only admins can manage promo codes
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ============================================================
+    // REFERRALS COLLECTION
+    // ============================================================
+    match /referrals/{referralId} {
+      // Users can read referrals where they are the referrer
+      allow read: if isAuthenticated() &&
+        (resource.data.referrerId == request.auth.uid || isAdmin());
+
+      // Authenticated users can create referrals
+      allow create: if isAuthenticated();
+
+      // Only admins can update/delete referrals
+      allow update, delete: if isAdmin();
+    }
+
+    // ============================================================
+    // DENY ALL OTHER COLLECTIONS
+    // ============================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

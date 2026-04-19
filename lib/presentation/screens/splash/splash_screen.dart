@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/enums/enums.dart';
 import '../../../data/providers/providers.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -130,7 +132,8 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     authState.when(
       data: (user) {
         if (user != null) {
-          Navigator.pushReplacementNamed(context, '/home');
+          // User is authenticated, check role and navigate accordingly
+          _navigateBasedOnRole();
         } else {
           Navigator.pushReplacementNamed(context, '/onboarding');
         }
@@ -141,6 +144,42 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
       },
       error: (_, __) {
         Navigator.pushReplacementNamed(context, '/onboarding');
+      },
+    );
+  }
+
+  void _navigateBasedOnRole() async {
+    // Get user data to check role
+    final userDataAsync = ref.read(currentUserDataProvider);
+
+    userDataAsync.when(
+      data: (userData) {
+        if (userData == null) {
+          // User data not found, go to profile setup
+          Navigator.pushReplacementNamed(context, '/profile-setup');
+          return;
+        }
+
+        // Navigate based on user role
+        switch (userData.role) {
+          case UserRole.admin:
+            Navigator.pushReplacementNamed(context, '/admin');
+            break;
+          case UserRole.driver:
+            Navigator.pushReplacementNamed(context, '/driver-home');
+            break;
+          case UserRole.user:
+            Navigator.pushReplacementNamed(context, '/home');
+            break;
+        }
+      },
+      loading: () {
+        // Wait for user data to load
+        Future.delayed(const Duration(milliseconds: 500), _navigateBasedOnRole);
+      },
+      error: (_, __) {
+        // Error loading user data, go to default home
+        Navigator.pushReplacementNamed(context, '/home');
       },
     );
   }
@@ -156,6 +195,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -233,9 +273,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                       },
                       child: Column(
                         children: [
-                          const Text(
-                            'DriverApp',
-                            style: TextStyle(
+                          Text(
+                            l.appTitle,
+                            style: const TextStyle(
                               fontSize: 36,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
@@ -244,7 +284,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Your Personal Transportation',
+                            l.yourPersonalTransportation,
                             style: TextStyle(
                               fontSize: 16,
                               color: Colors.white.withValues(alpha: 0.8),
@@ -278,7 +318,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                'Loading...',
+                                l.loading,
                                 style: TextStyle(
                                   color: Colors.white.withValues(alpha: 0.7),
                                   fontSize: 14,

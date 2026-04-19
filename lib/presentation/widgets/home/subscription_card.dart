@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/enums/enum_l10n.dart';
 import '../../../data/models/subscription_model.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 class SubscriptionCard extends StatelessWidget {
   final SubscriptionModel subscription;
@@ -9,6 +11,7 @@ class SubscriptionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -57,7 +60,7 @@ class SubscriptionCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        subscription.vehicleType.displayName,
+                        subscription.vehicleType.localizedName(l),
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.white.withValues(alpha: 0.9),
@@ -75,7 +78,7 @@ class SubscriptionCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        subscription.driverGender.displayName,
+                        subscription.driverGender.localizedName(l),
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.white.withValues(alpha: 0.9),
@@ -110,7 +113,7 @@ class SubscriptionCard extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    '${subscription.remainingTrips} trips remaining',
+                    l.tripsRemaining(subscription.remainingTrips),
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -166,7 +169,7 @@ class SubscriptionCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    'Renews in ${subscription.daysRemaining} days',
+                    l.renewsInDays(subscription.daysRemaining),
                     style: TextStyle(
                       fontSize: 13,
                       color: Colors.white.withValues(alpha: 0.9),
@@ -187,18 +190,18 @@ class SubscriptionCard extends StatelessWidget {
                     color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
                       Text(
-                        'Manage',
-                        style: TextStyle(
+                        l.manage,
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      SizedBox(width: 4),
-                      Icon(
+                      const SizedBox(width: 4),
+                      const Icon(
                         Icons.arrow_forward_ios_rounded,
                         color: Colors.white,
                         size: 12,

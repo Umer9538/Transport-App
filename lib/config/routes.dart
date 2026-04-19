@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../presentation/screens/splash/splash_screen.dart';
 import '../presentation/screens/onboarding/onboarding_screen.dart';
 import '../presentation/screens/auth/login_screen.dart';
-import '../presentation/screens/auth/otp_screen.dart';
 import '../presentation/screens/auth/profile_setup_screen.dart';
 import '../presentation/screens/home/home_screen.dart';
 import '../presentation/screens/subscription/plans_screen.dart';
@@ -34,6 +33,11 @@ import '../presentation/screens/admin/trip_management_screen.dart';
 import '../presentation/screens/admin/user_management_screen.dart';
 import '../presentation/screens/admin/driver_management_screen.dart';
 import '../presentation/screens/admin/analytics_screen.dart';
+import '../presentation/screens/driver/driver_home_screen.dart';
+import '../presentation/screens/driver/driver_trips_screen.dart';
+import '../presentation/screens/driver/driver_earnings_screen.dart';
+import '../presentation/screens/driver/driver_profile_screen.dart';
+import '../presentation/screens/driver/driver_registration_screen.dart';
 import '../data/models/trip_model.dart';
 import '../core/animations/page_transitions.dart';
 
@@ -74,6 +78,13 @@ class AppRoutes {
   static const String adminDrivers = '/admin/drivers';
   static const String adminAnalytics = '/admin/analytics';
 
+  // Driver routes
+  static const String driverHome = '/driver-home';
+  static const String driverTrips = '/driver-trips';
+  static const String driverEarnings = '/driver-earnings';
+  static const String driverProfile = '/driver-profile';
+  static const String driverRegistration = '/driver-registration';
+
   static Route<dynamic> generateRoute(RouteSettings routeSettings) {
     switch (routeSettings.name) {
       case splash:
@@ -88,16 +99,6 @@ class AppRoutes {
       case login:
         return SlidePageRoute(
           page: const LoginScreen(),
-          direction: SlideTransitionDirection.rightToLeft,
-        );
-
-      case otp:
-        final args = routeSettings.arguments as Map<String, dynamic>;
-        return SlidePageRoute(
-          page: OTPScreen(
-            phoneNumber: args['phoneNumber'],
-            verificationId: args['verificationId'],
-          ),
           direction: SlideTransitionDirection.rightToLeft,
         );
 
@@ -291,6 +292,34 @@ class AppRoutes {
         return SlidePageRoute(
           page: const AnalyticsScreen(),
           direction: SlideTransitionDirection.rightToLeft,
+        );
+
+      // Driver routes
+      case driverHome:
+        return FadePageRoute(page: const DriverHomeScreen());
+
+      case driverTrips:
+        return SlidePageRoute(
+          page: const DriverTripsScreen(),
+          direction: SlideTransitionDirection.rightToLeft,
+        );
+
+      case driverEarnings:
+        return SlidePageRoute(
+          page: const DriverEarningsScreen(),
+          direction: SlideTransitionDirection.rightToLeft,
+        );
+
+      case driverProfile:
+        return SlidePageRoute(
+          page: const DriverProfileScreen(),
+          direction: SlideTransitionDirection.rightToLeft,
+        );
+
+      case driverRegistration:
+        return SlidePageRoute(
+          page: const DriverRegistrationScreen(),
+          direction: SlideTransitionDirection.bottomToTop,
         );
 
       default:

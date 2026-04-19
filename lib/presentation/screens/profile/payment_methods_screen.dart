@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/providers/providers.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 class PaymentMethod {
   final String id;
@@ -29,41 +32,63 @@ class PaymentMethod {
       isDefault: isDefault ?? this.isDefault,
     );
   }
+
+  factory PaymentMethod.fromMap(Map<String, dynamic> data) {
+    return PaymentMethod(
+      id: data['id'] ?? '',
+      type: data['type'] ?? 'visa',
+      label: data['label'] ?? 'Card',
+      lastFour: data['lastFour'],
+      expiryDate: data['expiryDate'],
+      isDefault: data['isDefault'] ?? false,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'type': type,
+      'label': label,
+      'lastFour': lastFour,
+      'expiryDate': expiryDate,
+      'isDefault': isDefault,
+    };
+  }
 }
 
-class PaymentMethodsScreen extends StatefulWidget {
+class PaymentMethodsScreen extends ConsumerStatefulWidget {
   const PaymentMethodsScreen({super.key});
 
   @override
-  State<PaymentMethodsScreen> createState() => _PaymentMethodsScreenState();
+  ConsumerState<PaymentMethodsScreen> createState() => _PaymentMethodsScreenState();
 }
 
-class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
-  List<PaymentMethod> _methods = [
-    PaymentMethod(
-      id: '1',
-      type: 'visa',
-      label: 'Visa',
-      lastFour: '4242',
-      expiryDate: '12/27',
-      isDefault: true,
-    ),
-    PaymentMethod(
-      id: '2',
-      type: 'mastercard',
-      label: 'Mastercard',
-      lastFour: '8888',
-      expiryDate: '09/26',
-    ),
-    PaymentMethod(
-      id: '3',
-      type: 'apple_pay',
-      label: 'Apple Pay',
-    ),
-  ];
+class _PaymentMethodsScreenState extends ConsumerState<PaymentMethodsScreen> {
+  List<PaymentMethod> _methods = [];
+  bool _loaded = false;
+
+  Future<void> _loadMethods() async {
+    if (_loaded) return;
+    final user = ref.read(currentUserProvider);
+    if (user == null) return;
+    final firestoreService = ref.read(firestoreServiceProvider);
+    final data = await firestoreService.getPaymentMethods(user.uid);
+    if (mounted) {
+      setState(() {
+        _methods = data.map((d) => PaymentMethod.fromMap(d)).toList();
+        _loaded = true;
+      });
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() => _loadMethods());
+  }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -73,9 +98,9 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
           icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Payment Methods',
-          style: TextStyle(
+        title: Text(
+          l.paymentMethods,
+          style: const TextStyle(
             color: AppColors.textPrimary,
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -88,7 +113,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_rounded),
-        label: const Text('Add Method', style: TextStyle(fontWeight: FontWeight.w600)),
+        label: Text(l.addMethod, style: const TextStyle(fontWeight: FontWeight.w600)),
       ),
       body: _methods.isEmpty
           ? _buildEmptyState()
@@ -104,9 +129,9 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                 // Wallets section
                 if (_methods.any((m) => m.type == 'apple_pay' || m.type == 'wallet')) ...[
                   const SizedBox(height: 24),
-                  const Text(
-                    'Digital Wallets',
-                    style: TextStyle(
+                  Text(
+                    l.digitalWallets,
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: AppColors.textSecondary,
@@ -133,7 +158,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'Your payment information is encrypted and stored securely.',
+                          l.paymentInfoEncrypted,
                           style: TextStyle(
                             fontSize: 13,
                             color: AppColors.textSecondary,
@@ -149,6 +174,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
   }
 
   Widget _buildEmptyState() {
+    final l = AppLocalizations.of(context)!;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -166,9 +192,9 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          const Text(
-            'No Payment Methods',
-            style: TextStyle(
+          Text(
+            l.noPaymentMethods,
+            style: const TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
               color: AppColors.textPrimary,
@@ -176,7 +202,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Add a card or wallet to pay\nfor your subscriptions',
+            l.addCardOrWallet,
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 14,
@@ -189,6 +215,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
   }
 
   Widget _buildCardItem(PaymentMethod method) {
+    final l = AppLocalizations.of(context)!;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -239,9 +266,9 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                           color: Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Text(
-                          'Default',
-                          style: TextStyle(
+                        child: Text(
+                          l.defaultLabel,
+                          style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                             color: Colors.white,
@@ -268,7 +295,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'CARD TYPE',
+                          l.cardType,
                           style: TextStyle(
                             fontSize: 10,
                             color: Colors.white.withValues(alpha: 0.6),
@@ -290,7 +317,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          'EXPIRES',
+                          l.expires,
                           style: TextStyle(
                             fontSize: 10,
                             color: Colors.white.withValues(alpha: 0.6),
@@ -319,6 +346,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
   }
 
   Widget _buildWalletItem(PaymentMethod method) {
+    final l = AppLocalizations.of(context)!;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
@@ -366,7 +394,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Connected',
+                        l.connected,
                         style: TextStyle(
                           fontSize: 13,
                           color: AppColors.secondary,
@@ -382,9 +410,9 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                       color: AppColors.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(6),
                     ),
-                    child: const Text(
-                      'Default',
-                      style: TextStyle(
+                    child: Text(
+                      l.defaultLabel,
+                      style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                         color: AppColors.primary,
@@ -406,6 +434,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
+        final l = AppLocalizations.of(ctx)!;
         return Container(
           decoration: const BoxDecoration(
             color: Colors.white,
@@ -440,7 +469,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
               if (!method.isDefault)
                 ListTile(
                   leading: const Icon(Icons.star_rounded, color: AppColors.primary),
-                  title: const Text('Set as Default'),
+                  title: Text(l.setAsDefault),
                   onTap: () {
                     _setDefault(method);
                     Navigator.pop(ctx);
@@ -448,7 +477,7 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
                 ),
               ListTile(
                 leading: const Icon(Icons.delete_rounded, color: AppColors.error),
-                title: const Text('Remove', style: TextStyle(color: AppColors.error)),
+                title: Text(l.remove, style: const TextStyle(color: AppColors.error)),
                 onTap: () {
                   Navigator.pop(ctx);
                   _showRemoveDialog(method);
@@ -462,53 +491,69 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
     );
   }
 
-  void _setDefault(PaymentMethod method) {
+  void _setDefault(PaymentMethod method) async {
+    final user = ref.read(currentUserProvider);
+    if (user == null) return;
     setState(() {
       _methods = _methods.map((m) {
         return m.copyWith(isDefault: m.id == method.id);
       }).toList();
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${method.label} set as default'),
-        backgroundColor: AppColors.secondary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+    final firestoreService = ref.read(firestoreServiceProvider);
+    await firestoreService.setDefaultPaymentMethod(user.uid, method.id);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${method.label} set as default'),
+          backgroundColor: AppColors.secondary,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    }
   }
 
   void _showRemoveDialog(PaymentMethod method) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Remove Payment Method'),
-        content: Text('Remove ${method.label}${method.lastFour != null ? ' ending in ${method.lastFour}' : ''}?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              setState(() {
-                _methods.removeWhere((m) => m.id == method.id);
-              });
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Payment method removed'),
-                  backgroundColor: AppColors.error,
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-              );
-            },
-            child: const Text('Remove', style: TextStyle(color: AppColors.error)),
-          ),
-        ],
-      ),
+      builder: (ctx) {
+        final l = AppLocalizations.of(ctx)!;
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(l.removePaymentMethod),
+          content: Text('Remove ${method.label}${method.lastFour != null ? ' ending in ${method.lastFour}' : ''}?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(l.cancel),
+            ),
+            TextButton(
+              onPressed: () async {
+                final user = ref.read(currentUserProvider);
+                setState(() {
+                  _methods.removeWhere((m) => m.id == method.id);
+                });
+                Navigator.pop(ctx);
+                if (user != null) {
+                  final firestoreService = ref.read(firestoreServiceProvider);
+                  await firestoreService.deletePaymentMethod(user.uid, method.id);
+                }
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(l.paymentMethodRemoved),
+                      backgroundColor: AppColors.error,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  );
+                }
+              },
+              child: Text(l.remove, style: const TextStyle(color: AppColors.error)),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -523,9 +568,10 @@ class _PaymentMethodsScreenState extends State<PaymentMethodsScreen> {
             setState(() {
               _methods.add(method);
             });
+            final l = AppLocalizations.of(context)!;
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: const Text('Payment method added'),
+                content: Text(l.paymentMethodAdded),
                 backgroundColor: AppColors.secondary,
                 behavior: SnackBarBehavior.floating,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -566,6 +612,7 @@ class _AddCardSheetState extends State<_AddCardSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return Container(
       height: MediaQuery.of(context).size.height * 0.75,
       decoration: const BoxDecoration(
@@ -584,9 +631,9 @@ class _AddCardSheetState extends State<_AddCardSheet> {
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
-            'Add Payment Method',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          Text(
+            l.addPaymentMethod,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 20),
 
@@ -595,9 +642,9 @@ class _AddCardSheetState extends State<_AddCardSheet> {
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Row(
               children: [
-                _buildTypeOption('card', 'Credit/Debit Card', Icons.credit_card_rounded),
+                _buildTypeOption('card', l.creditDebitCard, Icons.credit_card_rounded),
                 const SizedBox(width: 12),
-                _buildTypeOption('apple_pay', 'Apple Pay', Icons.apple_rounded),
+                _buildTypeOption('apple_pay', l.applePay, Icons.apple_rounded),
               ],
             ),
           ),
@@ -632,7 +679,7 @@ class _AddCardSheetState extends State<_AddCardSheet> {
                         child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
                       )
                     : Text(
-                        _selectedType == 'card' ? 'Add Card' : 'Connect Apple Pay',
+                        _selectedType == 'card' ? l.addCard : l.connectApplePay,
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                       ),
               ),
@@ -679,12 +726,13 @@ class _AddCardSheetState extends State<_AddCardSheet> {
   }
 
   Widget _buildCardForm() {
+    final l = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildField(
           _cardNumberController,
-          'Card Number',
+          l.cardNumber,
           Icons.credit_card_rounded,
           keyboardType: TextInputType.number,
           formatters: [
@@ -699,7 +747,7 @@ class _AddCardSheetState extends State<_AddCardSheet> {
             Expanded(
               child: _buildField(
                 _expiryController,
-                'MM/YY',
+                l.mmyy,
                 Icons.date_range_rounded,
                 keyboardType: TextInputType.number,
                 formatters: [
@@ -713,7 +761,7 @@ class _AddCardSheetState extends State<_AddCardSheet> {
             Expanded(
               child: _buildField(
                 _cvvController,
-                'CVV',
+                l.cvv,
                 Icons.lock_rounded,
                 keyboardType: TextInputType.number,
                 formatters: [
@@ -728,7 +776,7 @@ class _AddCardSheetState extends State<_AddCardSheet> {
         const SizedBox(height: 14),
         _buildField(
           _nameController,
-          'Cardholder Name',
+          l.cardholderName,
           Icons.person_rounded,
         ),
       ],
@@ -736,6 +784,7 @@ class _AddCardSheetState extends State<_AddCardSheet> {
   }
 
   Widget _buildApplePayForm() {
+    final l = AppLocalizations.of(context)!;
     return Column(
       children: [
         const SizedBox(height: 40),
@@ -749,9 +798,9 @@ class _AddCardSheetState extends State<_AddCardSheet> {
             children: [
               const Icon(Icons.apple_rounded, size: 48, color: AppColors.textPrimary),
               const SizedBox(height: 16),
-              const Text(
-                'Connect Apple Pay',
-                style: TextStyle(
+              Text(
+                l.connectApplePay,
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary,
@@ -759,7 +808,7 @@ class _AddCardSheetState extends State<_AddCardSheet> {
               ),
               const SizedBox(height: 8),
               Text(
-                'Use your Apple Pay wallet for seamless payments',
+                l.useApplePayWallet,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
@@ -806,12 +855,13 @@ class _AddCardSheetState extends State<_AddCardSheet> {
   }
 
   Future<void> _addMethod() async {
+    final l = AppLocalizations.of(context)!;
     if (_selectedType == 'card') {
       final cardNum = _cardNumberController.text.replaceAll(' ', '');
       if (cardNum.length < 16 || _expiryController.text.length < 5 || _cvvController.text.length < 3) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Please fill in all card details'),
+            content: Text(l.pleaseCheckCardDetails),
             backgroundColor: AppColors.error,
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -822,7 +872,6 @@ class _AddCardSheetState extends State<_AddCardSheet> {
     }
 
     setState(() => _isSaving = true);
-    await Future.delayed(const Duration(milliseconds: 800));
 
     if (!mounted) return;
 

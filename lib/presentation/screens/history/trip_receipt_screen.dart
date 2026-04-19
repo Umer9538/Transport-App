@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/enums/enum_l10n.dart';
 import '../../../data/models/trip_model.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 class TripReceiptScreen extends StatelessWidget {
   final TripModel trip;
@@ -9,6 +11,8 @@ class TripReceiptScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -18,9 +22,9 @@ class TripReceiptScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Trip Receipt',
-          style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
+        title: Text(
+          l.tripReceipt,
+          style: const TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         actions: [
@@ -29,7 +33,7 @@ class TripReceiptScreen extends StatelessWidget {
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: const Text('Receipt shared'),
+                  content: Text(l.receiptShared),
                   backgroundColor: AppColors.secondary,
                   behavior: SnackBarBehavior.floating,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -74,9 +78,9 @@ class TripReceiptScreen extends StatelessWidget {
                       children: [
                         const Icon(Icons.receipt_long_rounded, color: Colors.white, size: 36),
                         const SizedBox(height: 12),
-                        const Text(
-                          'Payment Successful',
-                          style: TextStyle(
+                        Text(
+                          l.paymentSuccessful,
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -99,9 +103,9 @@ class TripReceiptScreen extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 24),
                     child: Column(
                       children: [
-                        const Text(
-                          'Total Amount',
-                          style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                        Text(
+                          l.totalAmount,
+                          style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
                         ),
                         const SizedBox(height: 4),
                         Text(
@@ -126,7 +130,7 @@ class TripReceiptScreen extends StatelessWidget {
                         _buildRoutePoint(
                           icon: Icons.circle,
                           color: AppColors.secondary,
-                          title: 'Pickup',
+                          title: l.pickup,
                           address: trip.pickupAddress,
                           isFirst: true,
                         ),
@@ -134,7 +138,7 @@ class TripReceiptScreen extends StatelessWidget {
                         _buildRoutePoint(
                           icon: Icons.location_on_rounded,
                           color: AppColors.error,
-                          title: 'Dropoff',
+                          title: l.dropoff,
                           address: trip.dropoffAddress,
                           isFirst: false,
                         ),
@@ -150,24 +154,24 @@ class TripReceiptScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Fare Breakdown',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        Text(
+                          l.fareBreakdown,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 14),
-                        _buildFareRow('Base fare', 'SAR ${((trip.fare ?? 0) * 0.6).toStringAsFixed(2)}'),
-                        _buildFareRow('Distance (${(trip.distanceKm ?? 0).toStringAsFixed(1)} km)', 'SAR ${((trip.fare ?? 0) * 0.25).toStringAsFixed(2)}'),
-                        _buildFareRow('Time charge', 'SAR ${((trip.fare ?? 0) * 0.1).toStringAsFixed(2)}'),
-                        _buildFareRow('Service fee', 'SAR ${((trip.fare ?? 0) * 0.05).toStringAsFixed(2)}'),
+                        _buildFareRow(l.baseFare, 'SAR ${((trip.fare ?? 0) * 0.6).toStringAsFixed(2)}'),
+                        _buildFareRow('${l.distanceCharge} (${(trip.distanceKm ?? 0).toStringAsFixed(1)} km)', 'SAR ${((trip.fare ?? 0) * 0.25).toStringAsFixed(2)}'),
+                        _buildFareRow(l.timeCharge, 'SAR ${((trip.fare ?? 0) * 0.1).toStringAsFixed(2)}'),
+                        _buildFareRow(l.serviceFee, 'SAR ${((trip.fare ?? 0) * 0.05).toStringAsFixed(2)}'),
                         if ((trip.fare ?? 0) > 50) ...[
                           const SizedBox(height: 4),
-                          _buildFareRow('Subscription discount', '- SAR ${((trip.fare ?? 0) * 0.15).toStringAsFixed(2)}', isDiscount: true),
+                          _buildFareRow(l.subscriptionDiscount, '- SAR ${((trip.fare ?? 0) * 0.15).toStringAsFixed(2)}', isDiscount: true),
                         ],
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 10),
                           child: Divider(),
                         ),
-                        _buildFareRow('Total', 'SAR ${(trip.fare ?? 0).toStringAsFixed(2)}', isBold: true),
+                        _buildFareRow(l.total, 'SAR ${(trip.fare ?? 0).toStringAsFixed(2)}', isBold: true),
                       ],
                     ),
                   ),
@@ -180,17 +184,17 @@ class TripReceiptScreen extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Trip Details',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        Text(
+                          l.tripDetails,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 14),
-                        _buildDetailRow(Icons.confirmation_number_rounded, 'Trip ID', trip.id.substring(0, 8).toUpperCase()),
-                        _buildDetailRow(Icons.access_time_rounded, 'Duration', '${trip.durationMinutes} min'),
-                        _buildDetailRow(Icons.straighten_rounded, 'Distance', '${(trip.distanceKm ?? 0).toStringAsFixed(1)} km'),
-                        _buildDetailRow(Icons.directions_car_rounded, 'Vehicle', trip.vehicleType.displayName),
-                        _buildDetailRow(Icons.person_rounded, 'Driver', trip.driverName ?? 'N/A'),
-                        _buildDetailRow(Icons.credit_card_rounded, 'Payment', 'Visa •••• 4242'),
+                        _buildDetailRow(Icons.confirmation_number_rounded, l.tripId, trip.id.substring(0, 8).toUpperCase()),
+                        _buildDetailRow(Icons.access_time_rounded, l.duration, '${trip.durationMinutes} min'),
+                        _buildDetailRow(Icons.straighten_rounded, l.distance, '${(trip.distanceKm ?? 0).toStringAsFixed(1)} km'),
+                        _buildDetailRow(Icons.directions_car_rounded, l.vehicle, trip.vehicleType.localizedName(l)),
+                        _buildDetailRow(Icons.person_rounded, l.driver, trip.driverName ?? 'N/A'),
+                        _buildDetailRow(Icons.credit_card_rounded, l.paymentMethod, 'Visa •••• 4242'),
                       ],
                     ),
                   ),
@@ -206,12 +210,12 @@ class TripReceiptScreen extends StatelessWidget {
                     child: Column(
                       children: [
                         Text(
-                          'Invoice #INV-${trip.id.substring(0, 6).toUpperCase()}',
+                          l.invoiceNumber('INV-${trip.id.substring(0, 6).toUpperCase()}'),
                           style: TextStyle(fontSize: 12, color: AppColors.textHint, fontWeight: FontWeight.w600),
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          'Generated on ${_formatDate(DateTime.now())}',
+                          l.generatedOn(_formatDate(DateTime.now())),
                           style: TextStyle(fontSize: 11, color: AppColors.textHint),
                         ),
                       ],
@@ -231,7 +235,7 @@ class TripReceiptScreen extends StatelessWidget {
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: const Text('Receipt downloaded as PDF'),
+                          content: Text(l.receiptDownloaded),
                           backgroundColor: AppColors.secondary,
                           behavior: SnackBarBehavior.floating,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -239,7 +243,7 @@ class TripReceiptScreen extends StatelessWidget {
                       );
                     },
                     icon: const Icon(Icons.download_rounded, size: 20),
-                    label: const Text('Download'),
+                    label: Text(l.download),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -253,7 +257,7 @@ class TripReceiptScreen extends StatelessWidget {
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: const Text('Receipt sent to your email'),
+                          content: Text(l.receiptEmailed),
                           backgroundColor: AppColors.secondary,
                           behavior: SnackBarBehavior.floating,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -261,7 +265,7 @@ class TripReceiptScreen extends StatelessWidget {
                       );
                     },
                     icon: const Icon(Icons.email_rounded, size: 20),
-                    label: const Text('Email'),
+                    label: Text(l.email),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),

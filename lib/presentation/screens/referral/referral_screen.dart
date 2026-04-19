@@ -1,16 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/providers/providers.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
-class ReferralScreen extends StatelessWidget {
+final _referralStatsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return {'totalReferrals': 0, 'earnedCredits': 0.0, 'referrals': []};
+  final firestoreService = ref.watch(firestoreServiceProvider);
+  return firestoreService.getReferralStats(user.uid);
+});
+
+final _referralCodeProvider = FutureProvider<String>((ref) async {
+  final user = ref.watch(currentUserProvider);
+  if (user == null) return 'N/A';
+  final firestoreService = ref.watch(firestoreServiceProvider);
+  return firestoreService.getUserReferralCode(user.uid);
+});
+
+class ReferralScreen extends ConsumerWidget {
   const ReferralScreen({super.key});
 
-  static const String _referralCode = 'DRIVE2026';
-  static const int _earnedCredits = 150;
-  static const int _totalReferrals = 3;
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
+    final referralCode = ref.watch(_referralCodeProvider).value ?? '...';
+    final stats = ref.watch(_referralStatsProvider).value ?? {'totalReferrals': 0, 'earnedCredits': 0.0, 'referrals': []};
+    final totalReferrals = stats['totalReferrals'] as int? ?? 0;
+    final earnedCredits = (stats['earnedCredits'] as num? ?? 0).toInt();
+    final referrals = stats['referrals'] as List? ?? [];
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: CustomScrollView(
@@ -55,9 +75,9 @@ class ReferralScreen extends StatelessWidget {
                         child: const Icon(Icons.card_giftcard_rounded, color: Colors.white, size: 40),
                       ),
                       const SizedBox(height: 16),
-                      const Text(
-                        'Invite Friends & Earn',
-                        style: TextStyle(
+                      Text(
+                        l.inviteFriendsAndEarn,
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
@@ -65,7 +85,7 @@ class ReferralScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Get SAR 50 credit for each friend\nwho subscribes',
+                        l.getSarCreditPerFriend,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.85),
@@ -115,7 +135,7 @@ class ReferralScreen extends StatelessWidget {
                                 ),
                               ),
                               child: Text(
-                                _referralCode,
+                                referralCode,
                                 style: const TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,
@@ -127,10 +147,10 @@ class ReferralScreen extends StatelessWidget {
                             const SizedBox(width: 12),
                             GestureDetector(
                               onTap: () {
-                                Clipboard.setData(const ClipboardData(text: _referralCode));
+                                Clipboard.setData(ClipboardData(text: referralCode));
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: const Text('Code copied to clipboard'),
+                                    content: Text(l.codeCopiedToClipboard),
                                     backgroundColor: AppColors.secondary,
                                     behavior: SnackBarBehavior.floating,
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -157,13 +177,13 @@ class ReferralScreen extends StatelessWidget {
                   // Share buttons
                   Row(
                     children: [
-                      _buildShareButton(context, Icons.message_rounded, 'SMS', AppColors.primary),
+                      _buildShareButton(context, Icons.message_rounded, l.sms, AppColors.primary, l),
                       const SizedBox(width: 10),
-                      _buildShareButton(context, Icons.chat_rounded, 'WhatsApp', const Color(0xFF25D366)),
+                      _buildShareButton(context, Icons.chat_rounded, l.whatsapp, const Color(0xFF25D366), l),
                       const SizedBox(width: 10),
-                      _buildShareButton(context, Icons.email_rounded, 'Email', AppColors.secondary),
+                      _buildShareButton(context, Icons.email_rounded, l.email, AppColors.secondary, l),
                       const SizedBox(width: 10),
-                      _buildShareButton(context, Icons.more_horiz_rounded, 'More', AppColors.textSecondary),
+                      _buildShareButton(context, Icons.more_horiz_rounded, l.more, AppColors.textSecondary, l),
                     ],
                   ),
 
@@ -172,38 +192,58 @@ class ReferralScreen extends StatelessWidget {
                   // Stats
                   Row(
                     children: [
-                      _buildStatCard('$_totalReferrals', 'Friends\nReferred', AppColors.primary),
+                      _buildStatCard('$totalReferrals', l.friendsReferred, AppColors.primary),
                       const SizedBox(width: 12),
-                      _buildStatCard('SAR $_earnedCredits', 'Credits\nEarned', AppColors.secondary),
+                      _buildStatCard('SAR $earnedCredits', l.creditsEarned, AppColors.secondary),
                       const SizedBox(width: 12),
-                      _buildStatCard('SAR 50', 'Per\nReferral', AppColors.warning),
+                      _buildStatCard('SAR 50', l.perReferral, AppColors.warning),
                     ],
                   ),
 
                   const SizedBox(height: 28),
 
                   // How it works
-                  const Text(
-                    'How it works',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  Text(
+                    l.howItWorks,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
-                  _buildStep(1, 'Share your code', 'Send your referral code to friends via any channel'),
-                  _buildStep(2, 'Friend subscribes', 'They sign up and subscribe using your code'),
-                  _buildStep(3, 'Both earn credits', 'You get SAR 50, they get SAR 25 off their first month'),
+                  _buildStep(1, l.shareYourCode, l.sendYourReferralCode),
+                  _buildStep(2, l.friendSubscribes, l.theySignUpAndSubscribe),
+                  _buildStep(3, l.bothEarnCredits, l.youGetSarTheyGetDiscount),
 
                   const SizedBox(height: 28),
 
                   // Referral history
-                  const Text(
-                    'Referral History',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  Text(
+                    l.referralHistory,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 16),
-                  _buildReferralHistoryItem('Ahmed M.', 'Joined Jan 15, 2026', 'SAR 50', true),
-                  _buildReferralHistoryItem('Sara K.', 'Joined Jan 10, 2026', 'SAR 50', true),
-                  _buildReferralHistoryItem('Omar H.', 'Joined Dec 28, 2025', 'SAR 50', true),
-                  _buildReferralHistoryItem('Fatima A.', 'Pending signup', 'Pending', false),
+                  if (referrals.isEmpty)
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(
+                          'No referrals yet. Share your code to get started!',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: AppColors.textSecondary),
+                        ),
+                      ),
+                    )
+                  else
+                    ...referrals.map((r) {
+                      final data = r as Map<String, dynamic>;
+                      final name = data['referredName'] ?? 'User';
+                      final status = data['status'] ?? 'pending';
+                      final isCompleted = status == 'completed';
+                      return _buildReferralHistoryItem(
+                        name,
+                        isCompleted ? 'Subscribed' : l.pendingSignup,
+                        isCompleted ? 'SAR 50' : l.pending,
+                        isCompleted,
+                      );
+                    }),
 
                   const SizedBox(height: 32),
                 ],
@@ -215,13 +255,13 @@ class ReferralScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildShareButton(BuildContext context, IconData icon, String label, Color color) {
+  Widget _buildShareButton(BuildContext context, IconData icon, String label, Color color, AppLocalizations l) {
     return Expanded(
       child: GestureDetector(
         onTap: () {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Sharing via $label'),
+              content: Text('${l.sharingVia} $label'),
               backgroundColor: AppColors.secondary,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),

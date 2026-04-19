@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/enums/enums.dart';
+import '../../../core/enums/enum_l10n.dart';
 import '../../../core/animations/fade_animation.dart';
 import '../../../core/animations/staggered_animation.dart';
 import '../../../data/models/plan_model.dart';
 import '../../../data/providers/providers.dart';
 import '../../widgets/common/animated_button.dart';
 import '../../widgets/common/shimmer_loading.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 class PlansScreen extends ConsumerStatefulWidget {
   const PlansScreen({super.key});
@@ -42,6 +44,7 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final plansAsync = ref.watch(plansProvider);
 
     return Scaffold(
@@ -82,9 +85,9 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        const Text(
-                          'Choose Your Plan',
-                          style: TextStyle(
+                        Text(
+                          l.chooseYourPlan,
+                          style: const TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
@@ -92,7 +95,7 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Select the perfect subscription for your commute',
+                          l.selectPerfectSubscription,
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.white.withValues(alpha: 0.9),
@@ -117,9 +120,9 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
                   FadeAnimation(
                     delay: const Duration(milliseconds: 100),
                     slideOffset: const Offset(0, 0.3),
-                    child: const Text(
-                      'Select Vehicle Type',
-                      style: TextStyle(
+                    child: Text(
+                      l.selectVehicleType,
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
@@ -139,9 +142,9 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
                   FadeAnimation(
                     delay: const Duration(milliseconds: 300),
                     slideOffset: const Offset(0, 0.3),
-                    child: const Text(
-                      'Driver Preference',
-                      style: TextStyle(
+                    child: Text(
+                      l.driverPreference,
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
@@ -161,9 +164,9 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
                   FadeAnimation(
                     delay: const Duration(milliseconds: 500),
                     slideOffset: const Offset(0, 0.3),
-                    child: const Text(
-                      'Available Plans',
-                      style: TextStyle(
+                    child: Text(
+                      l.availablePlans,
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
@@ -195,6 +198,7 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
   }
 
   Widget _buildVehicleSelector() {
+    final l = AppLocalizations.of(context)!;
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       physics: const BouncingScrollPhysics(),
@@ -238,7 +242,7 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      vehicle.displayName,
+                      vehicle.localizedName(l),
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight:
@@ -267,6 +271,7 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
   }
 
   Widget _buildGenderSelector() {
+    final l = AppLocalizations.of(context)!;
     return Row(
       children: DriverGender.values.map((gender) {
         final isSelected = _selectedGender == gender;
@@ -303,7 +308,7 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      gender.displayName,
+                      gender.localizedName(l),
                       style: TextStyle(
                         fontSize: 12,
                         fontWeight:
@@ -324,11 +329,12 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
   }
 
   Widget _buildDemoPlans() {
+    final l = AppLocalizations.of(context)!;
     final demoPlans = [
       PlanModel(
         id: '1',
-        name: 'Weekly Basic',
-        description: 'Perfect for trying out the service',
+        name: l.weeklyBasic,
+        description: l.perfectForTrying,
         type: PlanType.weekly,
         durationDays: 7,
         tripsPerDay: 2,
@@ -338,8 +344,8 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
       ),
       PlanModel(
         id: '2',
-        name: 'Monthly Comfort',
-        description: 'Most popular choice for daily commuters',
+        name: l.monthlyComfort,
+        description: l.mostPopularChoice,
         type: PlanType.monthly,
         durationDays: 30,
         tripsPerDay: 2,
@@ -349,8 +355,8 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
       ),
       PlanModel(
         id: '3',
-        name: 'Quarterly Premium',
-        description: 'Best value for long-term commitment',
+        name: l.quarterlyPremium,
+        description: l.bestValueLongTerm,
         type: PlanType.quarterly,
         durationDays: 90,
         tripsPerDay: 2,
@@ -378,6 +384,7 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
   }
 
   Widget _buildPlanCard(PlanModel plan) {
+    final l = AppLocalizations.of(context)!;
     final isSelected = _selectedPlan?.id == plan.id;
     final price = plan.getPriceForVehicle(_selectedVehicle);
 
@@ -441,9 +448,9 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
                                 color: AppColors.warning,
                                 borderRadius: BorderRadius.circular(6),
                               ),
-                              child: const Text(
-                                'POPULAR',
-                                style: TextStyle(
+                              child: Text(
+                                l.popular,
+                                style: const TextStyle(
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.white,
@@ -478,7 +485,7 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
                       ),
                     ),
                     Text(
-                      '/${plan.type.displayName.toLowerCase()}',
+                      '/${plan.type.localizedName(l).toLowerCase()}',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
@@ -539,18 +546,18 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
                   color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.check_circle_rounded,
                       color: AppColors.primary,
                       size: 20,
                     ),
-                    SizedBox(width: 8),
+                    const SizedBox(width: 8),
                     Text(
-                      'Selected',
-                      style: TextStyle(
+                      l.selected,
+                      style: const TextStyle(
                         color: AppColors.primary,
                         fontWeight: FontWeight.w600,
                       ),
@@ -577,6 +584,7 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
   }
 
   Widget _buildBottomSheet() {
+    final l = AppLocalizations.of(context)!;
     final price = _selectedPlan!.getPriceForVehicle(_selectedVehicle);
 
     return Container(
@@ -604,7 +612,7 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Total',
+                l.total,
                 style: TextStyle(
                   fontSize: 12,
                   color: AppColors.textSecondary,
@@ -623,7 +631,7 @@ class _PlansScreenState extends ConsumerState<PlansScreen>
           const SizedBox(width: 24),
           Expanded(
             child: AnimatedButton(
-              text: 'Continue',
+              text: l.continueBtn,
               onPressed: () {
                 // Navigate to schedule setup
                 Navigator.pushNamed(context, '/schedule-setup', arguments: {

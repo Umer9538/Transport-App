@@ -5,6 +5,8 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/theme_provider.dart';
 import '../../../core/localization/locale_provider.dart';
 import '../../../core/animations/staggered_animation.dart';
+import '../../../data/providers/providers.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -54,6 +56,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -70,9 +73,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Settings',
-          style: TextStyle(
+        title: Text(
+          l.settings,
+          style: const TextStyle(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
@@ -87,11 +90,11 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           staggerDelay: const Duration(milliseconds: 50),
           children: [
             // Notifications Section
-            _buildSectionTitle('Notifications'),
+            _buildSectionTitle(l.notifications),
             _buildSwitchTile(
               icon: Icons.notifications_active_rounded,
-              title: 'Push Notifications',
-              subtitle: 'Receive trip updates and alerts',
+              title: l.pushNotifications,
+              subtitle: l.receiveUpdatesAlerts,
               value: _pushNotifications,
               onChanged: (value) {
                 setState(() => _pushNotifications = value);
@@ -100,8 +103,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             _buildSwitchTile(
               icon: Icons.email_rounded,
-              title: 'Email Notifications',
-              subtitle: 'Receive important updates via email',
+              title: l.emailNotifications,
+              subtitle: l.receiveEmailUpdates,
               value: _emailNotifications,
               onChanged: (value) {
                 setState(() => _emailNotifications = value);
@@ -110,8 +113,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             _buildSwitchTile(
               icon: Icons.alarm_rounded,
-              title: 'Trip Reminders',
-              subtitle: 'Get notified 30 min before pickup',
+              title: l.tripReminders,
+              subtitle: l.getNotifiedBeforePickup,
               value: _tripReminders,
               onChanged: (value) {
                 setState(() => _tripReminders = value);
@@ -120,8 +123,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             _buildSwitchTile(
               icon: Icons.local_offer_rounded,
-              title: 'Promotional Emails',
-              subtitle: 'Receive offers and discounts',
+              title: l.promotionalEmails,
+              subtitle: l.receiveOffersDiscounts,
               value: _promotionalEmails,
               onChanged: (value) {
                 setState(() => _promotionalEmails = value);
@@ -132,24 +135,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const SizedBox(height: 24),
 
             // Privacy & Security
-            _buildSectionTitle('Privacy & Security'),
+            _buildSectionTitle(l.privacyAndSecurity),
             _buildMenuTile(
               icon: Icons.lock_rounded,
-              title: 'Change Password',
-              subtitle: 'Update your password',
+              title: l.changePassword,
+              subtitle: l.updateYourPassword,
               onTap: () => _showChangePasswordSheet(),
             ),
             _buildSwitchTile(
               icon: Icons.fingerprint_rounded,
-              title: 'Biometric Login',
-              subtitle: 'Use fingerprint or face ID',
+              title: l.biometricLogin,
+              subtitle: l.useFingerprintFaceId,
               value: _biometricLogin,
               onChanged: (value) {
                 setState(() => _biometricLogin = value);
                 _savePreference('biometric_login', value);
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(value ? 'Biometric login enabled' : 'Biometric login disabled'),
+                    content: Text(value ? l.biometricEnabled : l.biometricDisabled),
                     backgroundColor: AppColors.secondary,
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -159,24 +162,24 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             _buildMenuTile(
               icon: Icons.shield_rounded,
-              title: 'Privacy Settings',
-              subtitle: 'Control your data sharing',
+              title: l.privacySettings,
+              subtitle: l.controlDataSharing,
               onTap: () => _showPrivacySettings(),
             ),
             _buildMenuTile(
               icon: Icons.history_rounded,
-              title: 'Login History',
-              subtitle: 'View recent account activity',
+              title: l.loginHistory,
+              subtitle: l.viewRecentActivity,
               onTap: () => Navigator.pushNamed(context, '/login-history'),
             ),
 
             const SizedBox(height: 24),
 
             // App Settings
-            _buildSectionTitle('App Settings'),
+            _buildSectionTitle(l.appSettings),
             _buildMenuTile(
               icon: Icons.language_rounded,
-              title: 'Language',
+              title: l.language,
               subtitle: _selectedLanguage,
               onTap: () => _showLanguageSelector(),
               trailing: Text(
@@ -189,7 +192,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             _buildMenuTile(
               icon: Icons.dark_mode_rounded,
-              title: 'Theme',
+              title: l.theme,
               subtitle: '$_selectedTheme mode',
               onTap: () => _showThemeSelector(),
               trailing: Text(
@@ -202,7 +205,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             ),
             _buildMenuTile(
               icon: Icons.map_rounded,
-              title: 'Map Style',
+              title: l.mapStyle,
               subtitle: '$_selectedMapStyle view',
               onTap: () => _showMapStyleSelector(),
             ),
@@ -210,59 +213,66 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             const SizedBox(height: 24),
 
             // About
-            _buildSectionTitle('About'),
+            _buildSectionTitle(l.aboutSection),
             _buildMenuTile(
               icon: Icons.info_outline_rounded,
-              title: 'About DriverApp',
-              subtitle: 'Version 1.0.0',
+              title: l.aboutDriverApp,
+              subtitle: '${l.version} 1.0.0',
               onTap: () => _showAboutDialog(),
             ),
             _buildMenuTile(
               icon: Icons.description_rounded,
-              title: 'Terms of Service',
-              subtitle: 'Read our terms',
+              title: l.termsOfService,
+              subtitle: l.readOurTerms,
               onTap: () => Navigator.pushNamed(context, '/terms'),
             ),
             _buildMenuTile(
               icon: Icons.privacy_tip_rounded,
-              title: 'Privacy Policy',
-              subtitle: 'How we handle your data',
+              title: l.privacyPolicy,
+              subtitle: l.howWeHandleData,
               onTap: () => Navigator.pushNamed(context, '/privacy-policy'),
             ),
             _buildMenuTile(
               icon: Icons.star_rate_rounded,
-              title: 'Rate the App',
-              subtitle: 'Leave a review',
+              title: l.rateApp,
+              subtitle: l.leaveAReview,
               onTap: () => _showRateAppDialog(),
             ),
 
             const SizedBox(height: 24),
 
-            // Admin
-            _buildSectionTitle('Developer'),
+            // Developer
+            _buildSectionTitle(l.developerSection),
             _buildMenuTile(
               icon: Icons.admin_panel_settings_rounded,
-              title: 'Admin Panel',
-              subtitle: 'Manage trips, users & drivers',
+              title: l.adminPanel,
+              subtitle: l.manageTripsUsersDrivers,
               onTap: () => Navigator.pushNamed(context, '/admin'),
               iconColor: Colors.purple,
+            ),
+            _buildMenuTile(
+              icon: Icons.swap_horiz_rounded,
+              title: l.switchUserRole,
+              subtitle: l.testDifferentInterfaces,
+              onTap: () => _showRoleSwitcher(),
+              iconColor: Colors.orange,
             ),
 
             const SizedBox(height: 24),
 
             // Danger Zone
-            _buildSectionTitle('Danger Zone'),
+            _buildSectionTitle(l.dangerZone),
             _buildMenuTile(
               icon: Icons.delete_outline_rounded,
-              title: 'Clear Cache',
-              subtitle: 'Free up storage space',
+              title: l.clearCache,
+              subtitle: l.freeUpStorage,
               onTap: () => _showClearCacheDialog(),
               iconColor: AppColors.warning,
             ),
             _buildMenuTile(
               icon: Icons.delete_forever_rounded,
-              title: 'Delete Account',
-              subtitle: 'Permanently delete your account',
+              title: l.deleteAccount,
+              subtitle: l.permanentlyDeleteAccount,
               onTap: () => _showDeleteAccountDialog(),
               iconColor: AppColors.error,
               titleColor: AppColors.error,
@@ -421,6 +431,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   void _showLanguageSelector() {
+    final l = AppLocalizations.of(context)!;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -443,9 +454,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              const Text(
-                'Select Language',
-                style: TextStyle(
+              Text(
+                l.selectLanguage,
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -474,6 +485,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   void _showThemeSelector() {
+    final l = AppLocalizations.of(context)!;
     final themes = ['Light', 'Dark', 'System Default'];
     final icons = [Icons.light_mode_rounded, Icons.dark_mode_rounded, Icons.phone_android_rounded];
 
@@ -499,9 +511,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              const Text(
-                'Select Theme',
-                style: TextStyle(
+              Text(
+                l.selectTheme,
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -531,6 +543,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   void _showMapStyleSelector() {
+    final l = AppLocalizations.of(context)!;
     final styles = ['Standard', 'Satellite', 'Terrain', 'Dark'];
     final icons = [Icons.map_rounded, Icons.satellite_rounded, Icons.terrain_rounded, Icons.dark_mode_rounded];
 
@@ -556,9 +569,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-              const Text(
-                'Select Map Style',
-                style: TextStyle(
+              Text(
+                l.selectMapStyle,
+                style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -587,6 +600,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   void _showAboutDialog() {
+    final l = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (context) {
@@ -608,22 +622,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                 ),
               ),
               const SizedBox(width: 12),
-              const Text('DriverApp'),
+              Text(l.appTitle),
             ],
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Version 1.0.0'),
+              Text('${l.version} 1.0.0'),
               const SizedBox(height: 8),
               Text(
-                'Your personal transportation subscription service for hassle-free daily commute.',
+                l.appDescription,
                 style: TextStyle(color: AppColors.textSecondary),
               ),
               const SizedBox(height: 16),
               Text(
-                '© 2026 DriverApp. All rights reserved.',
+                l.copyright,
                 style: TextStyle(
                   fontSize: 12,
                   color: AppColors.textHint,
@@ -634,7 +648,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
+              child: Text(l.close),
             ),
           ],
         );
@@ -643,6 +657,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   void _showClearCacheDialog() {
+    final l = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (context) {
@@ -650,32 +665,40 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          title: const Text('Clear Cache'),
-          content: const Text(
-            'This will clear all cached data including images and temporary files. Your account data will not be affected.',
+          title: Text(l.clearCache),
+          content: Text(
+            l.clearCacheConfirmMsg,
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
+              child: Text(l.cancel),
             ),
             TextButton(
-              onPressed: () {
+              onPressed: () async {
                 Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('Cache cleared successfully'),
-                    backgroundColor: AppColors.secondary,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                try {
+                  final cacheService = ref.read(cacheServiceProvider);
+                  await cacheService.clearAll();
+                } catch (_) {
+                  // Cache clear is best-effort
+                }
+                if (mounted) {
+                  ScaffoldMessenger.of(this.context).showSnackBar(
+                    SnackBar(
+                      content: Text(l.cacheCleared),
+                      backgroundColor: AppColors.secondary,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
-                  ),
-                );
+                  );
+                }
               },
-              child: const Text(
-                'Clear',
-                style: TextStyle(color: AppColors.warning),
+              child: Text(
+                l.clear,
+                style: const TextStyle(color: AppColors.warning),
               ),
             ),
           ],
@@ -685,42 +708,70 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   }
 
   void _showDeleteAccountDialog() {
+    final l = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (ctx) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: const Text('Delete Account'),
-          content: const Text(
-            'This action cannot be undone. All your data, including trip history, subscriptions, and saved addresses will be permanently deleted.',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-                Navigator.of(context).pushNamedAndRemoveUntil(
-                  '/login',
-                  (route) => false,
-                );
-              },
-              child: const Text(
-                'Delete',
-                style: TextStyle(color: AppColors.error),
+        bool isDeleting = false;
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
               ),
-            ),
-          ],
+              title: Text(l.deleteAccount),
+              content: Text(
+                l.deleteAccountConfirmMsg,
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isDeleting ? null : () => Navigator.pop(ctx),
+                  child: Text(l.cancel),
+                ),
+                TextButton(
+                  onPressed: isDeleting ? null : () async {
+                    setDialogState(() => isDeleting = true);
+                    try {
+                      final authService = ref.read(authServiceProvider);
+                      await authService.deleteAccount();
+                      if (ctx.mounted) Navigator.pop(ctx);
+                      if (mounted) {
+                        Navigator.of(this.context).pushNamedAndRemoveUntil(
+                          '/login',
+                          (route) => false,
+                        );
+                      }
+                    } catch (e) {
+                      setDialogState(() => isDeleting = false);
+                      if (mounted) {
+                        ScaffoldMessenger.of(this.context).showSnackBar(
+                          SnackBar(
+                            content: Text('${l.deleteAccount} failed: $e'),
+                            backgroundColor: AppColors.error,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  child: isDeleting
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.error))
+                      : Text(
+                          l.delete,
+                          style: const TextStyle(color: AppColors.error),
+                        ),
+                ),
+              ],
+            );
+          },
         );
       },
     );
   }
 
   void _showChangePasswordSheet() {
+    final l = AppLocalizations.of(context)!;
     final currentPassController = TextEditingController();
     final newPassController = TextEditingController();
     final confirmPassController = TextEditingController();
@@ -758,33 +809,33 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      const Text(
-                        'Change Password',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      Text(
+                        l.changePassword,
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Enter your current password and choose a new one',
+                        l.enterCurrentAndNew,
                         style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
                       ),
                       const SizedBox(height: 24),
                       _buildPasswordField(
                         currentPassController,
-                        'Current Password',
+                        l.currentPassword,
                         obscureCurrent,
                         () => setSheetState(() => obscureCurrent = !obscureCurrent),
                       ),
                       const SizedBox(height: 14),
                       _buildPasswordField(
                         newPassController,
-                        'New Password',
+                        l.newPassword,
                         obscureNew,
                         () => setSheetState(() => obscureNew = !obscureNew),
                       ),
                       const SizedBox(height: 14),
                       _buildPasswordField(
                         confirmPassController,
-                        'Confirm New Password',
+                        l.confirmNewPassword,
                         obscureConfirm,
                         () => setSheetState(() => obscureConfirm = !obscureConfirm),
                       ),
@@ -792,7 +843,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                       Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          'Password must be at least 8 characters with a number and special character',
+                          l.passwordMinLength,
                           style: TextStyle(fontSize: 12, color: AppColors.textHint),
                         ),
                       ),
@@ -807,7 +858,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                                 confirmPassController.text.isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: const Text('Please fill all fields'),
+                                  content: Text(l.fillAllFields),
                                   backgroundColor: AppColors.error,
                                   behavior: SnackBarBehavior.floating,
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -818,7 +869,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             if (newPassController.text.length < 8) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: const Text('Password must be at least 8 characters'),
+                                  content: Text(l.passwordMustBe8Chars),
                                   backgroundColor: AppColors.error,
                                   behavior: SnackBarBehavior.floating,
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -829,7 +880,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             if (newPassController.text != confirmPassController.text) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: const Text('Passwords do not match'),
+                                  content: Text(l.passwordsDoNotMatch),
                                   backgroundColor: AppColors.error,
                                   behavior: SnackBarBehavior.floating,
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -845,7 +896,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                             if (mounted) {
                               ScaffoldMessenger.of(this.context).showSnackBar(
                                 SnackBar(
-                                  content: const Text('Password changed successfully'),
+                                  content: Text(l.passwordChanged),
                                   backgroundColor: AppColors.secondary,
                                   behavior: SnackBarBehavior.floating,
                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -861,7 +912,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                           ),
                           child: isSaving
                               ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white))
-                              : const Text('Update Password', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                              : Text(l.updatePasswordBtn, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -907,7 +958,122 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
+  void _showRoleSwitcher() {
+    final l = AppLocalizations.of(context)!;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.divider,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                l.switchUserRole,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Text(
+                  l.forTestingOnly,
+                  style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              const SizedBox(height: 16),
+              _buildRoleOption(
+                ctx,
+                icon: Icons.person_rounded,
+                title: l.userRole,
+                subtitle: l.regularPassengerInterface,
+                color: AppColors.primary,
+                route: '/home',
+              ),
+              _buildRoleOption(
+                ctx,
+                icon: Icons.drive_eta_rounded,
+                title: l.driverRole,
+                subtitle: l.driverInterfaceDesc,
+                color: AppColors.success,
+                route: '/driver-home',
+              ),
+              _buildRoleOption(
+                ctx,
+                icon: Icons.admin_panel_settings_rounded,
+                title: l.adminRole,
+                subtitle: l.adminDashboardDesc,
+                color: Colors.purple,
+                route: '/admin',
+              ),
+              SizedBox(height: MediaQuery.of(ctx).padding.bottom + 16),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildRoleOption(
+    BuildContext ctx, {
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required String route,
+  }) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: color, size: 24),
+      ),
+      title: Text(
+        title,
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+      ),
+      trailing: const Icon(
+        Icons.arrow_forward_ios_rounded,
+        size: 16,
+        color: AppColors.textHint,
+      ),
+      onTap: () {
+        Navigator.pop(ctx);
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          route,
+          (route) => false,
+        );
+      },
+    );
+  }
+
   void _showRateAppDialog() {
+    final l = AppLocalizations.of(context)!;
     int selectedRating = 0;
     showDialog(
       context: context,
@@ -916,12 +1082,12 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           builder: (context, setDialogState) {
             return AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: const Text('Rate DriverApp', textAlign: TextAlign.center),
+              title: Text(l.rateDriverApp, textAlign: TextAlign.center),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'How would you rate your experience?',
+                    l.howWouldYouRate,
                     textAlign: TextAlign.center,
                     style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
                   ),
@@ -945,7 +1111,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
                   if (selectedRating > 0) ...[
                     const SizedBox(height: 12),
                     Text(
-                      selectedRating >= 4 ? 'We\'re glad you enjoy it!' : selectedRating >= 3 ? 'Thanks for your feedback!' : 'We\'ll work to improve!',
+                      selectedRating >= 4 ? l.gladYouEnjoy : selectedRating >= 3 ? l.thanksFeedback : l.wellImprove,
                       style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
                     ),
                   ],
@@ -954,21 +1120,21 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Later'),
+                  child: Text(l.later),
                 ),
                 TextButton(
                   onPressed: selectedRating > 0 ? () {
                     Navigator.pop(ctx);
                     ScaffoldMessenger.of(this.context).showSnackBar(
                       SnackBar(
-                        content: const Text('Thank you for your rating!'),
+                        content: Text(l.thankYouRating),
                         backgroundColor: AppColors.secondary,
                         behavior: SnackBarBehavior.floating,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
                     );
                   } : null,
-                  child: const Text('Submit'),
+                  child: Text(l.submit),
                 ),
               ],
             );
@@ -1011,6 +1177,7 @@ class _PrivacySettingsSheetState extends State<_PrivacySettingsSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return Container(
       decoration: const BoxDecoration(
         color: Colors.white,
@@ -1029,22 +1196,22 @@ class _PrivacySettingsSheetState extends State<_PrivacySettingsSheet> {
             ),
           ),
           const SizedBox(height: 24),
-          const Text(
-            'Privacy Settings',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          Text(
+            l.privacySettings,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text(
-              'Control how your data is used and shared',
+              l.controlDataSharing,
               style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
             ),
           ),
           const SizedBox(height: 20),
           _buildPrivacyToggle(
-            'Location Sharing',
-            'Share location with drivers during trips',
+            l.locationSharing,
+            l.shareLocationDesc,
             Icons.location_on_rounded,
             _shareLocation,
             (val) {
@@ -1053,8 +1220,8 @@ class _PrivacySettingsSheetState extends State<_PrivacySettingsSheet> {
             },
           ),
           _buildPrivacyToggle(
-            'Analytics',
-            'Help improve the app with usage data',
+            l.analyticsLabel,
+            l.helpImproveAppData,
             Icons.analytics_rounded,
             _shareAnalytics,
             (val) {
@@ -1063,8 +1230,8 @@ class _PrivacySettingsSheetState extends State<_PrivacySettingsSheet> {
             },
           ),
           _buildPrivacyToggle(
-            'Personalized Ads',
-            'See ads relevant to your interests',
+            l.personalizedAds,
+            l.seeRelevantAds,
             Icons.ads_click_rounded,
             _personalizedAds,
             (val) {
@@ -1073,8 +1240,8 @@ class _PrivacySettingsSheetState extends State<_PrivacySettingsSheet> {
             },
           ),
           _buildPrivacyToggle(
-            'Data Collection',
-            'Allow collection of trip patterns',
+            l.dataCollection,
+            l.allowTripPatterns,
             Icons.data_usage_rounded,
             _dataCollection,
             (val) {

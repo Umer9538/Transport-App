@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../widgets/common/animated_button.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -11,39 +12,36 @@ class OnboardingScreen extends StatefulWidget {
 
 class _OnboardingScreenState extends State<OnboardingScreen>
     with TickerProviderStateMixin {
+  static const _pageCount = 4;
   final PageController _pageController = PageController();
   int _currentPage = 0;
 
   late List<AnimationController> _iconControllers;
   late List<Animation<double>> _iconAnimations;
 
-  final List<OnboardingPage> _pages = [
+  List<OnboardingPage> _getPages(AppLocalizations l) => [
     OnboardingPage(
       icon: Icons.calendar_month_rounded,
-      title: 'Pre-Scheduled Rides',
-      description:
-          'Plan your commute in advance. Schedule rides for days, weeks, or months with ease.',
+      title: l.preScheduledRides,
+      description: l.preScheduledRidesDesc,
       gradient: [AppColors.primary, AppColors.primaryDark],
     ),
     OnboardingPage(
       icon: Icons.person_outline_rounded,
-      title: 'Choose Your Driver',
-      description:
-          'Select your preferred driver gender for a comfortable and safe journey.',
+      title: l.chooseYourDriver,
+      description: l.chooseYourDriverDesc,
       gradient: [AppColors.secondary, AppColors.secondaryDark],
     ),
     OnboardingPage(
       icon: Icons.directions_car_rounded,
-      title: 'Pick Your Ride',
-      description:
-          'Choose from Economy, Comfort, Luxury, or Van based on your needs.',
+      title: l.pickYourRide,
+      description: l.pickYourRideDesc,
       gradient: [const Color(0xFF8B5CF6), const Color(0xFF6D28D9)],
     ),
     OnboardingPage(
       icon: Icons.subscriptions_rounded,
-      title: 'Subscribe & Save',
-      description:
-          'One subscription, unlimited convenience. Save time and money with monthly plans.',
+      title: l.subscribeAndSave,
+      description: l.subscribeAndSaveDesc,
       gradient: [const Color(0xFFF59E0B), const Color(0xFFD97706)],
     ),
   ];
@@ -56,7 +54,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   void _initAnimations() {
     _iconControllers = List.generate(
-      _pages.length,
+      _pageCount,
       (index) => AnimationController(
         vsync: this,
         duration: const Duration(milliseconds: 1000),
@@ -96,7 +94,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   void _nextPage() {
-    if (_currentPage < _pages.length - 1) {
+    if (_currentPage < _pageCount - 1) {
       _pageController.nextPage(
         duration: const Duration(milliseconds: 500),
         curve: Curves.easeOutCubic,
@@ -112,6 +110,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final pages = _getPages(l);
     return Scaffold(
       body: Stack(
         children: [
@@ -119,9 +119,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           PageView.builder(
             controller: _pageController,
             onPageChanged: _onPageChanged,
-            itemCount: _pages.length,
+            itemCount: pages.length,
             itemBuilder: (context, index) {
-              return _buildPage(index);
+              return _buildPage(pages, index);
             },
           ),
 
@@ -130,13 +130,13 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             top: MediaQuery.of(context).padding.top + 16,
             right: 24,
             child: AnimatedOpacity(
-              opacity: _currentPage < _pages.length - 1 ? 1.0 : 0.0,
+              opacity: _currentPage < pages.length - 1 ? 1.0 : 0.0,
               duration: const Duration(milliseconds: 300),
               child: TextButton(
                 onPressed: _skip,
-                child: const Text(
-                  'Skip',
-                  style: TextStyle(
+                child: Text(
+                  l.skip,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
@@ -151,15 +151,15 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             bottom: 0,
             left: 0,
             right: 0,
-            child: _buildBottomControls(),
+            child: _buildBottomControls(l, pages),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildPage(int index) {
-    final page = _pages[index];
+  Widget _buildPage(List<OnboardingPage> pages, int index) {
+    final page = pages[index];
 
     return Container(
       decoration: BoxDecoration(
@@ -272,7 +272,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     );
   }
 
-  Widget _buildBottomControls() {
+  Widget _buildBottomControls(AppLocalizations l, List<OnboardingPage> pages) {
     return Container(
       padding: EdgeInsets.only(
         left: 32,
@@ -296,7 +296,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           // Page indicators
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(_pages.length, (index) {
+            children: List.generate(pages.length, (index) {
               return AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -316,12 +316,12 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
           // Next/Get Started button
           AnimatedButton(
-            text: _currentPage == _pages.length - 1 ? 'Get Started' : 'Next',
+            text: _currentPage == pages.length - 1 ? l.getStarted : l.next,
             onPressed: _nextPage,
             backgroundColor: Colors.white,
-            textColor: _pages[_currentPage].gradient[0],
+            textColor: pages[_currentPage].gradient[0],
             width: double.infinity,
-            icon: _currentPage == _pages.length - 1
+            icon: _currentPage == pages.length - 1
                 ? Icons.arrow_forward_rounded
                 : null,
           ),

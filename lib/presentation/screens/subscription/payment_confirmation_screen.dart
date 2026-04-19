@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/animations/fade_animation.dart';
 import '../../../core/animations/pulse_animation.dart';
+import '../../../data/providers/providers.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
-class PaymentConfirmationScreen extends StatefulWidget {
+class PaymentConfirmationScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic>? arguments;
 
   const PaymentConfirmationScreen({super.key, this.arguments});
 
   @override
-  State<PaymentConfirmationScreen> createState() => _PaymentConfirmationScreenState();
+  ConsumerState<PaymentConfirmationScreen> createState() => _PaymentConfirmationScreenState();
 }
 
-class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen>
+class _PaymentConfirmationScreenState extends ConsumerState<PaymentConfirmationScreen>
     with TickerProviderStateMixin {
   late AnimationController _checkController;
   late AnimationController _confettiController;
@@ -54,6 +57,29 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen>
         _confettiController.forward();
       }
     });
+
+    // Create payment record in Firestore
+    _createPaymentRecord();
+  }
+
+  Future<void> _createPaymentRecord() async {
+    try {
+      final user = ref.read(currentUserProvider);
+      if (user == null) return;
+      final firestoreService = ref.read(firestoreServiceProvider);
+
+      final args = widget.arguments ?? {};
+      await firestoreService.createPayment({
+        'userId': user.uid,
+        'planName': args['planName'] ?? 'Standard',
+        'amount': args['amount'] ?? 'SAR 599',
+        'vehicleType': args['vehicleType'] ?? 'Mid-Range',
+        'status': 'completed',
+        'type': 'subscription',
+      });
+    } catch (_) {
+      // Payment record is non-critical, don't block UI
+    }
   }
 
   @override
@@ -65,6 +91,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     final planName = widget.arguments?['planName'] ?? 'Standard';
     final amount = widget.arguments?['amount'] ?? 'SAR 599';
     final vehicleType = widget.arguments?['vehicleType'] ?? 'Mid-Range';
@@ -121,9 +148,9 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen>
               FadeAnimation(
                 delay: const Duration(milliseconds: 600),
                 slideOffset: const Offset(0, 0.3),
-                child: const Text(
-                  'Payment Successful!',
-                  style: TextStyle(
+                child: Text(
+                  l.paymentSuccessful,
+                  style: const TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
                     color: AppColors.textPrimary,
@@ -137,7 +164,7 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen>
                 delay: const Duration(milliseconds: 800),
                 slideOffset: const Offset(0, 0.3),
                 child: Text(
-                  'Your subscription has been activated',
+                  l.subscriptionActivated,
                   style: TextStyle(
                     fontSize: 16,
                     color: AppColors.textSecondary,
@@ -167,15 +194,15 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen>
                   ),
                   child: Column(
                     children: [
-                      _buildDetailRow('Plan', planName),
+                      _buildDetailRow(l.planDetail, planName),
                       const Divider(height: 24),
-                      _buildDetailRow('Vehicle', vehicleType),
+                      _buildDetailRow(l.vehicleDetail, vehicleType),
                       const Divider(height: 24),
-                      _buildDetailRow('Amount', amount),
+                      _buildDetailRow(l.amountDetail, amount),
                       const Divider(height: 24),
-                      _buildDetailRow('Status', 'Active'),
+                      _buildDetailRow(l.statusDetail, l.active),
                       const Divider(height: 24),
-                      _buildDetailRow('Start Date', 'Today'),
+                      _buildDetailRow(l.startDateDetail, l.today),
                     ],
                   ),
                 ),
@@ -207,9 +234,9 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen>
                           ),
                           elevation: 0,
                         ),
-                        child: const Text(
-                          'Set Up Schedule',
-                          style: TextStyle(
+                        child: Text(
+                          l.setUpScheduleBtn,
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                             color: Colors.white,
@@ -234,9 +261,9 @@ class _PaymentConfirmationScreenState extends State<PaymentConfirmationScreen>
                             borderRadius: BorderRadius.circular(16),
                           ),
                         ),
-                        child: const Text(
-                          'Go to Home',
-                          style: TextStyle(
+                        child: Text(
+                          l.goToHome,
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
                             color: AppColors.primary,

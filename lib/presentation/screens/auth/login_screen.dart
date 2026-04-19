@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/animations/fade_animation.dart';
 import '../../../core/animations/staggered_animation.dart';
 import '../../../data/providers/providers.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../widgets/common/animated_button.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -16,10 +16,14 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen>
     with SingleTickerProviderStateMixin {
-  final _phoneController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _isLoading = false;
-  String _countryCode = '+966';
+  bool _isRegisterMode = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   late AnimationController _backgroundController;
   late Animation<double> _backgroundAnimation;
@@ -42,66 +46,140 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
   @override
   void dispose() {
-    _phoneController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
     _backgroundController.dispose();
     super.dispose();
   }
 
-  Future<void> _sendOTP() async {
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
-    final authService = ref.read(authServiceProvider);
-    final phoneNumber = '$_countryCode${_phoneController.text.trim()}';
+    try {
+      final authService = ref.read(authServiceProvider);
 
-    await authService.sendOTP(
-      phoneNumber: phoneNumber,
-      onCodeSent: (verificationId) {
-        setState(() => _isLoading = false);
-        Navigator.pushNamed(
-          context,
-          '/otp',
-          arguments: {
-            'phoneNumber': phoneNumber,
-            'verificationId': verificationId,
-          },
+      if (_isRegisterMode) {
+        // Register new account
+        final credential = await authService.registerWithEmail(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
         );
-      },
-      onError: (error) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error),
-            backgroundColor: AppColors.error,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
+
+        if (mounted && credential.user != null) {
+          // New user → profile setup
+          Navigator.pushReplacementNamed(context, '/profile-setup');
+        }
+      } else {
+        // Login existing account
+        final credential = await authService.signInWithEmail(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
         );
-      },
-      onAutoVerify: (credential) async {
-        setState(() => _isLoading = false);
-        // Auto verification - sign in directly
-        try {
-          await authService.signInWithCredential(credential);
+
+        if (mounted && credential.user != null) {
+          // Check if user profile exists
+          final userExists = await authService.userExists(credential.user!.uid);
+
           if (mounted) {
-            Navigator.pushReplacementNamed(context, '/profile-setup');
-          }
-        } catch (e) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(e.toString())),
-            );
+            if (userExists) {
+              // Existing user → check role and navigate
+              final userData = await authService.getUserData(credential.user!.uid);
+              if (mounted) {
+                switch (userData?.role.name) {
+                  case 'driver':
+                    Navigator.pushNamedAndRemoveUntil(context, '/driver-home', (r) => false);
+                    break;
+                  case 'admin':
+                    Navigator.pushNamedAndRemoveUntil(context, '/admin', (r) => false);
+                    break;
+                  default:
+                    Navigator.pushNamedAndRemoveUntil(context, '/home', (r) => false);
+                }
+              }
+            } else {
+              // New login but no profile → setup
+              Navigator.pushReplacementNamed(context, '/profile-setup');
+            }
           }
         }
-      },
-    );
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        String errorMessage = e.toString();
+        // Clean up Firebase error messages
+        if (errorMessage.contains('user-not-found')) {
+          errorMessage = 'No account found with this email';
+        } else if (errorMessage.contains('wrong-password') || errorMessage.contains('invalid-credential')) {
+          errorMessage = 'Incorrect email or password';
+        } else if (errorMessage.contains('email-already-in-use')) {
+          errorMessage = 'An account already exists with this email';
+        } else if (errorMessage.contains('weak-password')) {
+          errorMessage = 'Password must be at least 6 characters';
+        } else if (errorMessage.contains('invalid-email')) {
+          errorMessage = 'Please enter a valid email address';
+        } else if (errorMessage.contains('too-many-requests')) {
+          errorMessage = 'Too many attempts. Please try again later';
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMessage),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _forgotPassword() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Please enter your email address first'),
+          backgroundColor: AppColors.warning,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return;
+    }
+
+    try {
+      final authService = ref.read(authServiceProvider);
+      await authService.sendPasswordResetEmail(email);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Password reset email sent to $email'),
+            backgroundColor: AppColors.secondary,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Error sending reset email. Check your email address.'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return Scaffold(
       body: AnimatedBuilder(
         animation: _backgroundAnimation,
@@ -167,9 +245,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                       baseDelay: const Duration(milliseconds: 200),
                       staggerDelay: const Duration(milliseconds: 100),
                       children: [
-                        const Text(
-                          'Welcome\nBack!',
-                          style: TextStyle(
+                        Text(
+                          _isRegisterMode ? l.completeSetup : l.welcomeBack,
+                          style: const TextStyle(
                             fontSize: 42,
                             fontWeight: FontWeight.bold,
                             color: Colors.white,
@@ -178,7 +256,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                         ),
                         const SizedBox(height: 12),
                         Text(
-                          'Enter your phone number to continue',
+                          _isRegisterMode
+                              ? 'Sign up with your email to get started'
+                              : 'Sign in with your email to continue',
                           style: TextStyle(
                             fontSize: 16,
                             color: Colors.white.withValues(alpha: 0.8),
@@ -187,9 +267,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                       ],
                     ),
 
-                    const SizedBox(height: 60),
+                    const SizedBox(height: 48),
 
-                    // Phone input card
+                    // Login/Register card
                     FadeAnimation(
                       delay: const Duration(milliseconds: 500),
                       slideOffset: const Offset(0, 0.5),
@@ -209,100 +289,197 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Phone Number',
-                              style: TextStyle(
+                            // Email field
+                            Text(
+                              l.emailAddress,
+                              style: const TextStyle(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.textSecondary,
                               ),
                             ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                // Country code selector
-                                GestureDetector(
-                                  onTap: _showCountryPicker,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 16,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: AppColors.inputBackground,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Text(
-                                          _countryCode,
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
-                                            color: AppColors.textPrimary,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        const Icon(
-                                          Icons.keyboard_arrow_down_rounded,
-                                          color: AppColors.textSecondary,
-                                          size: 20,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _emailController,
+                              keyboardType: TextInputType.emailAddress,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: 'name@example.com',
+                                hintStyle: TextStyle(
+                                  color: AppColors.textHint,
+                                  fontWeight: FontWeight.normal,
                                 ),
-                                const SizedBox(width: 12),
-                                // Phone input
-                                Expanded(
-                                  child: TextFormField(
-                                    controller: _phoneController,
-                                    keyboardType: TextInputType.phone,
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                    inputFormatters: [
-                                      FilteringTextInputFormatter.digitsOnly,
-                                      LengthLimitingTextInputFormatter(10),
-                                    ],
-                                    decoration: InputDecoration(
-                                      hintText: '(555) 123-4567',
-                                      hintStyle: TextStyle(
-                                        color: AppColors.textHint,
-                                        fontWeight: FontWeight.normal,
-                                      ),
-                                      prefixIcon: const Icon(
-                                        Icons.phone_rounded,
-                                        color: AppColors.primary,
-                                      ),
-                                      filled: true,
-                                      fillColor: AppColors.inputBackground,
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(12),
-                                        borderSide: BorderSide.none,
-                                      ),
-                                    ),
-                                    validator: (value) {
-                                      if (value == null || value.isEmpty) {
-                                        return 'Please enter your phone number';
-                                      }
-                                      if (value.length < 10) {
-                                        return 'Please enter a valid phone number';
-                                      }
-                                      return null;
-                                    },
-                                  ),
+                                prefixIcon: const Icon(
+                                  Icons.email_rounded,
+                                  color: AppColors.primary,
                                 ),
-                              ],
+                                filled: true,
+                                fillColor: AppColors.inputBackground,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                                ),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please enter your email';
+                                }
+                                if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                                  return 'Please enter a valid email';
+                                }
+                                return null;
+                              },
                             ),
+
+                            const SizedBox(height: 20),
+
+                            // Password field
+                            Text(
+                              'Password',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextFormField(
+                              controller: _passwordController,
+                              obscureText: _obscurePassword,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: '••••••••',
+                                hintStyle: TextStyle(
+                                  color: AppColors.textHint,
+                                  fontWeight: FontWeight.normal,
+                                ),
+                                prefixIcon: const Icon(
+                                  Icons.lock_rounded,
+                                  color: AppColors.primary,
+                                ),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                                    color: AppColors.textHint,
+                                  ),
+                                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                                ),
+                                filled: true,
+                                fillColor: AppColors.inputBackground,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                                ),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please enter your password';
+                                }
+                                if (_isRegisterMode && value.length < 6) {
+                                  return 'Password must be at least 6 characters';
+                                }
+                                return null;
+                              },
+                            ),
+
+                            // Confirm password (register mode only)
+                            if (_isRegisterMode) ...[
+                              const SizedBox(height: 20),
+                              Text(
+                                'Confirm Password',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              TextFormField(
+                                controller: _confirmPasswordController,
+                                obscureText: _obscureConfirmPassword,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: '••••••••',
+                                  hintStyle: TextStyle(
+                                    color: AppColors.textHint,
+                                    fontWeight: FontWeight.normal,
+                                  ),
+                                  prefixIcon: const Icon(
+                                    Icons.lock_outline_rounded,
+                                    color: AppColors.primary,
+                                  ),
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      _obscureConfirmPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                                      color: AppColors.textHint,
+                                    ),
+                                    onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+                                  ),
+                                  filled: true,
+                                  fillColor: AppColors.inputBackground,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                                  ),
+                                ),
+                                validator: (value) {
+                                  if (value != _passwordController.text) {
+                                    return 'Passwords do not match';
+                                  }
+                                  return null;
+                                },
+                              ),
+                            ],
+
+                            // Forgot password (login mode only)
+                            if (!_isRegisterMode) ...[
+                              const SizedBox(height: 12),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: GestureDetector(
+                                  onTap: _forgotPassword,
+                                  child: Text(
+                                    'Forgot Password?',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.primary,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+
                             const SizedBox(height: 24),
+
+                            // Submit button
                             AnimatedButton(
-                              text: 'Send OTP',
-                              onPressed: _isLoading ? null : _sendOTP,
+                              text: _isRegisterMode ? 'Create Account' : 'Sign In',
+                              onPressed: _isLoading ? null : _submit,
                               isLoading: _isLoading,
                               width: double.infinity,
-                              icon: Icons.arrow_forward_rounded,
+                              icon: _isRegisterMode ? Icons.person_add_rounded : Icons.login_rounded,
                             ),
                           ],
                         ),
@@ -311,65 +488,39 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
                     const SizedBox(height: 32),
 
-                    // Divider
+                    // Toggle login/register
                     FadeAnimation(
                       delay: const Duration(milliseconds: 700),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              height: 1,
-                              color: Colors.white.withValues(alpha: 0.3),
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Text(
-                              'or continue with',
+                      child: Center(
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _isRegisterMode = !_isRegisterMode;
+                              _confirmPasswordController.clear();
+                            });
+                          },
+                          child: RichText(
+                            text: TextSpan(
+                              text: _isRegisterMode
+                                  ? 'Already have an account? '
+                                  : "Don't have an account? ",
                               style: TextStyle(
                                 color: Colors.white.withValues(alpha: 0.8),
-                                fontSize: 14,
+                                fontSize: 15,
                               ),
+                              children: [
+                                TextSpan(
+                                  text: _isRegisterMode ? 'Sign In' : 'Sign Up',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          Expanded(
-                            child: Container(
-                              height: 1,
-                              color: Colors.white.withValues(alpha: 0.3),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 32),
-
-                    // Social login buttons
-                    FadeAnimation(
-                      delay: const Duration(milliseconds: 900),
-                      slideOffset: const Offset(0, 0.5),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _SocialButton(
-                              icon: Icons.g_mobiledata_rounded,
-                              label: 'Google',
-                              onTap: () {
-                                // TODO: Implement Google sign-in
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: _SocialButton(
-                              icon: Icons.apple_rounded,
-                              label: 'Apple',
-                              onTap: () {
-                                // TODO: Implement Apple sign-in
-                              },
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
 
@@ -377,27 +528,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
                     // Terms
                     FadeAnimation(
-                      delay: const Duration(milliseconds: 1100),
+                      delay: const Duration(milliseconds: 900),
                       child: Center(
                         child: Text.rich(
                           TextSpan(
-                            text: 'By continuing, you agree to our ',
+                            text: l.byContinuingAgree,
                             style: TextStyle(
                               color: Colors.white.withValues(alpha: 0.7),
                               fontSize: 12,
                             ),
-                            children: const [
+                            children: [
                               TextSpan(
-                                text: 'Terms of Service',
-                                style: TextStyle(
+                                text: l.termsOfService,
+                                style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   decoration: TextDecoration.underline,
                                 ),
                               ),
-                              TextSpan(text: ' and '),
+                              TextSpan(text: l.and),
                               TextSpan(
-                                text: 'Privacy Policy',
-                                style: TextStyle(
+                                text: l.privacyPolicy,
+                                style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                   decoration: TextDecoration.underline,
                                 ),
@@ -414,144 +565,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 ),
               ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showCountryPicker() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 12),
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.divider,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'Select Country',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              ...['🇸🇦 +966'].map(
-                (code) => ListTile(
-                  title: Text(code),
-                  onTap: () {
-                    setState(() {
-                      _countryCode = code.split(' ').last;
-                    });
-                    Navigator.pop(context);
-                  },
-                ),
-              ),
-              SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _SocialButton extends StatefulWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _SocialButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  State<_SocialButton> createState() => _SocialButtonState();
-}
-
-class _SocialButtonState extends State<_SocialButton>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 150),
-    );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => _controller.forward(),
-      onTapUp: (_) => _controller.reverse(),
-      onTapCancel: () => _controller.reverse(),
-      onTap: widget.onTap,
-      child: AnimatedBuilder(
-        animation: _scaleAnimation,
-        builder: (context, child) {
-          return Transform.scale(
-            scale: _scaleAnimation.value,
-            child: child,
-          );
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.3),
-              width: 1,
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                widget.icon,
-                color: Colors.white,
-                size: 24,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                widget.label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
           ),
         ),
       ),

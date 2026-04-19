@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 class LocationResult {
   final String address;
@@ -129,6 +130,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -139,7 +141,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          widget.title ?? 'Select Location',
+          widget.title ?? l.selectLocation,
           style: const TextStyle(
             color: AppColors.textPrimary,
             fontSize: 18,
@@ -178,7 +180,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                 controller: _searchController,
                 onChanged: _onSearchChanged,
                 decoration: InputDecoration(
-                  hintText: 'Search for a place or address',
+                  hintText: l.searchForPlaceOrAddress,
                   hintStyle: TextStyle(color: AppColors.textHint, fontSize: 14),
                   prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textHint),
                   suffixIcon: _searchController.text.isNotEmpty
@@ -250,7 +252,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         elevation: 0,
                       ),
-                      child: const Text('Confirm Location', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                      child: Text(l.confirmLocation, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                     ),
                   ),
                 ],
@@ -262,6 +264,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
   }
 
   Widget _buildListView() {
+    final l = AppLocalizations.of(context)!;
     if (_isSearching && _suggestions.isNotEmpty) {
       return ListView.builder(
         physics: const BouncingScrollPhysics(),
@@ -282,7 +285,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
               children: [
                 Icon(Icons.search_off_rounded, size: 48, color: AppColors.textHint),
                 const SizedBox(height: 12),
-                Text('No results found', style: TextStyle(color: AppColors.textSecondary)),
+                Text(l.noResultsFound, style: TextStyle(color: AppColors.textSecondary)),
               ],
             ),
           ),
@@ -290,7 +293,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
           // Use current location
           _buildActionTile(
             icon: Icons.my_location_rounded,
-            title: 'Use Current Location',
+            title: l.useCurrentLocation,
             color: AppColors.primary,
             onTap: () {
               setState(() {
@@ -302,7 +305,7 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
           // Pick on map
           _buildActionTile(
             icon: Icons.map_rounded,
-            title: 'Pick on Map',
+            title: l.pickOnMap,
             color: AppColors.secondary,
             onTap: () => setState(() => _showMap = true),
           ),
@@ -310,9 +313,9 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
 
           // Recent
           if (_recentLocations.isNotEmpty) ...[
-            const Text(
-              'Recent',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
+            Text(
+              l.recent,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 10),
             ..._recentLocations.map((p) => _buildPlaceTile(p)),
@@ -321,9 +324,9 @@ class _LocationPickerScreenState extends State<LocationPickerScreen> {
           const SizedBox(height: 20),
 
           // Popular
-          const Text(
-            'Popular Places',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
+          Text(
+            l.popularPlaces,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 10),
           ..._allPlaces.take(5).map((p) => _buildPlaceTile(p)),

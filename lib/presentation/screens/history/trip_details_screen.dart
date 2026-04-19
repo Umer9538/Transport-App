@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/enums/enums.dart';
+import '../../../core/enums/enum_l10n.dart';
 import '../../../core/animations/fade_animation.dart';
 import '../../../data/models/trip_model.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 class TripDetailsScreen extends StatelessWidget {
   final TripModel trip;
@@ -11,6 +13,8 @@ class TripDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -27,9 +31,9 @@ class TripDetailsScreen extends StatelessWidget {
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Trip Details',
-          style: TextStyle(
+        title: Text(
+          l.tripDetails,
+          style: const TextStyle(
             color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
           ),
@@ -45,7 +49,7 @@ class TripDetailsScreen extends StatelessWidget {
             // Status Banner
             FadeAnimation(
               delay: const Duration(milliseconds: 100),
-              child: _buildStatusBanner(),
+              child: _buildStatusBanner(context),
             ),
 
             const SizedBox(height: 24),
@@ -53,7 +57,7 @@ class TripDetailsScreen extends StatelessWidget {
             // Route Card
             FadeAnimation(
               delay: const Duration(milliseconds: 200),
-              child: _buildRouteCard(),
+              child: _buildRouteCard(context),
             ),
 
             const SizedBox(height: 20),
@@ -61,7 +65,7 @@ class TripDetailsScreen extends StatelessWidget {
             // Time Details
             FadeAnimation(
               delay: const Duration(milliseconds: 300),
-              child: _buildTimeCard(),
+              child: _buildTimeCard(context),
             ),
 
             const SizedBox(height: 20),
@@ -70,7 +74,7 @@ class TripDetailsScreen extends StatelessWidget {
             if (trip.driverName != null)
               FadeAnimation(
                 delay: const Duration(milliseconds: 400),
-                child: _buildDriverCard(),
+                child: _buildDriverCard(context),
               ),
 
             if (trip.driverName != null) const SizedBox(height: 20),
@@ -78,7 +82,7 @@ class TripDetailsScreen extends StatelessWidget {
             // Vehicle Info
             FadeAnimation(
               delay: const Duration(milliseconds: 500),
-              child: _buildVehicleCard(),
+              child: _buildVehicleCard(context),
             ),
 
             const SizedBox(height: 20),
@@ -113,7 +117,9 @@ class TripDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusBanner() {
+  Widget _buildStatusBanner(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -144,7 +150,7 @@ class TripDetailsScreen extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  trip.status.displayName,
+                  trip.status.localizedName(l),
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -153,7 +159,7 @@ class TripDetailsScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  _getStatusDescription(trip.status),
+                  _getStatusDescription(l, trip.status),
                   style: TextStyle(
                     fontSize: 13,
                     color: AppColors.textSecondary,
@@ -167,7 +173,9 @@ class TripDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRouteCard() {
+  Widget _buildRouteCard(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -184,9 +192,9 @@ class TripDetailsScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Route',
-            style: TextStyle(
+          Text(
+            l.routeSection,
+            style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: AppColors.textSecondary,
@@ -269,8 +277,8 @@ class TripDetailsScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildMetric(Icons.straighten_rounded, '${trip.distanceKm!.toStringAsFixed(1)} km', 'Distance'),
-                _buildMetric(Icons.timer_rounded, '${trip.estimatedMinutes ?? '--'} min', 'Duration'),
+                _buildMetric(Icons.straighten_rounded, '${trip.distanceKm!.toStringAsFixed(1)} km', l.distance),
+                _buildMetric(Icons.timer_rounded, '${trip.estimatedMinutes ?? '--'} min', l.duration),
               ],
             ),
           ],
@@ -303,7 +311,9 @@ class TripDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTimeCard() {
+  Widget _buildTimeCard(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -320,20 +330,20 @@ class TripDetailsScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Time',
-            style: TextStyle(
+          Text(
+            l.timeSection,
+            style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: AppColors.textSecondary,
             ),
           ),
           const SizedBox(height: 12),
-          _buildTimeRow('Scheduled', trip.formattedScheduledTime),
+          _buildTimeRow(l.scheduled, trip.formattedScheduledTime),
           if (trip.actualPickupTime != null)
-            _buildTimeRow('Picked Up', _formatDateTime(trip.actualPickupTime!)),
+            _buildTimeRow(l.pickedUp, _formatDateTime(trip.actualPickupTime!)),
           if (trip.actualDropoffTime != null)
-            _buildTimeRow('Dropped Off', _formatDateTime(trip.actualDropoffTime!)),
+            _buildTimeRow(l.droppedOff, _formatDateTime(trip.actualDropoffTime!)),
         ],
       ),
     );
@@ -365,7 +375,9 @@ class TripDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDriverCard() {
+  Widget _buildDriverCard(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -382,9 +394,9 @@ class TripDetailsScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Driver',
-            style: TextStyle(
+          Text(
+            l.driver,
+            style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: AppColors.textSecondary,
@@ -458,7 +470,9 @@ class TripDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildVehicleCard() {
+  Widget _buildVehicleCard(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -475,9 +489,9 @@ class TripDetailsScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Vehicle',
-            style: TextStyle(
+          Text(
+            l.vehicle,
+            style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: AppColors.textSecondary,
@@ -499,7 +513,7 @@ class TripDetailsScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    trip.vehicleType.displayName,
+                    trip.vehicleType.localizedName(l),
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
@@ -524,6 +538,8 @@ class TripDetailsScreen extends StatelessWidget {
   }
 
   Widget _buildFareCard(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -543,9 +559,9 @@ class TripDetailsScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Fare',
-                style: TextStyle(
+              Text(
+                l.fareSection,
+                style: const TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
                   color: AppColors.textSecondary,
@@ -581,7 +597,7 @@ class TripDetailsScreen extends StatelessWidget {
                 ),
               ),
               icon: const Icon(Icons.receipt_long_rounded, size: 20),
-              label: const Text('View Receipt'),
+              label: Text(l.viewReceipt),
             ),
           ),
         ],
@@ -590,6 +606,8 @@ class TripDetailsScreen extends StatelessWidget {
   }
 
   Widget _buildRatingCard(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -606,9 +624,9 @@ class TripDetailsScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Your Rating',
-            style: TextStyle(
+          Text(
+            l.yourRating,
+            style: const TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: AppColors.textSecondary,
@@ -658,7 +676,7 @@ class TripDetailsScreen extends StatelessWidget {
                   ),
                 ),
                 icon: const Icon(Icons.star_rounded, size: 20),
-                label: const Text('Rate this trip'),
+                label: Text(l.rateTrip),
               ),
             ),
         ],
@@ -667,6 +685,8 @@ class TripDetailsScreen extends StatelessWidget {
   }
 
   Widget _buildActionButtons(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+
     return Column(
       children: [
         SizedBox(
@@ -687,9 +707,9 @@ class TripDetailsScreen extends StatelessWidget {
               ),
             ),
             icon: const Icon(Icons.map_rounded, color: Colors.white, size: 20),
-            label: const Text(
-              'Track Trip',
-              style: TextStyle(
+            label: Text(
+              l.trackTrip,
+              style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 color: Colors.white,
@@ -711,9 +731,9 @@ class TripDetailsScreen extends StatelessWidget {
               ),
             ),
             icon: const Icon(Icons.close_rounded, size: 20),
-            label: const Text(
-              'Cancel Trip',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            label: Text(
+              l.cancelTrip,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
             ),
           ),
         ),
@@ -724,24 +744,27 @@ class TripDetailsScreen extends StatelessWidget {
   void _showCancelDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Cancel Trip'),
-        content: const Text('Are you sure you want to cancel this trip?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Keep Trip'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context);
-            },
-            child: const Text('Cancel Trip', style: TextStyle(color: AppColors.error)),
-          ),
-        ],
-      ),
+      builder: (context) {
+        final l = AppLocalizations.of(context)!;
+        return AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text(l.cancelTrip),
+          content: Text(l.cancelTripConfirm),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(l.keepTrip),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pop(context);
+              },
+              child: Text(l.cancelTrip, style: const TextStyle(color: AppColors.error)),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -788,22 +811,22 @@ class TripDetailsScreen extends StatelessWidget {
     }
   }
 
-  String _getStatusDescription(TripStatus status) {
+  String _getStatusDescription(AppLocalizations l, TripStatus status) {
     switch (status) {
       case TripStatus.scheduled:
-        return 'This trip is confirmed and scheduled';
+        return l.scheduledStatus;
       case TripStatus.driverAssigned:
-        return 'A driver has been assigned to your trip';
+        return l.driverAssignedStatus;
       case TripStatus.driverArriving:
-        return 'Your driver is on the way';
+        return l.driverArrivingStatus;
       case TripStatus.inProgress:
-        return 'You are currently on this trip';
+        return l.inProgressStatus;
       case TripStatus.completed:
-        return 'This trip has been completed';
+        return l.completedStatus;
       case TripStatus.cancelled:
-        return 'This trip was cancelled';
+        return l.cancelledStatus;
       case TripStatus.noShow:
-        return 'Driver arrived but passenger was not present';
+        return l.noShowStatus;
     }
   }
 }

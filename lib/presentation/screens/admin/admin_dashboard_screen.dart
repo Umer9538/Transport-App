@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../data/providers/providers.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
-class AdminDashboardScreen extends StatelessWidget {
+class AdminDashboardScreen extends ConsumerWidget {
   const AdminDashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -15,24 +19,29 @@ class AdminDashboardScreen extends StatelessWidget {
           icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          'Admin Panel',
-          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+        title: Text(
+          l.adminPanel,
+          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: Colors.white),
             onPressed: () {
+              ref.invalidate(adminStatsProvider);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: const Text('Data refreshed'),
+                  content: Text(l.dataRefreshed),
                   backgroundColor: AppColors.secondary,
                   behavior: SnackBarBehavior.floating,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
               );
             },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout_rounded, color: Colors.white),
+            onPressed: () => _showLogoutDialog(context, ref),
           ),
         ],
       ),
@@ -42,105 +51,110 @@ class AdminDashboardScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Stats row
-            Row(
-              children: [
-                _buildStatCard('156', 'Active Users', Icons.people_rounded, AppColors.primary),
-                const SizedBox(width: 12),
-                _buildStatCard('42', 'Today\'s Trips', Icons.directions_car_rounded, AppColors.secondary),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                _buildStatCard('89', 'Subscriptions', Icons.card_membership_rounded, Colors.orange),
-                const SizedBox(width: 12),
-                _buildStatCard('12', 'Active Drivers', Icons.person_pin_rounded, Colors.purple),
-              ],
-            ),
-
-            const SizedBox(height: 28),
-
-            // Revenue card
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [AppColors.primary, AppColors.primaryDark],
-                ),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            // Stats from Firestore
+            ref.watch(adminStatsProvider).when(
+              data: (stats) => Column(
                 children: [
-                  Text(
-                    'Monthly Revenue',
-                    style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'SAR 45,320',
-                    style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.trending_up_rounded, color: Colors.greenAccent.shade200, size: 16),
-                      const SizedBox(width: 4),
-                      Text(
-                        '+12.5% from last month',
-                        style: TextStyle(color: Colors.greenAccent.shade200, fontSize: 12),
-                      ),
+                      _buildStatCard('${stats['activeUsers'] ?? 0}', l.activeUsers, Icons.people_rounded, AppColors.primary),
+                      const SizedBox(width: 12),
+                      _buildStatCard('${stats['todayTrips'] ?? 0}', l.todaysTrips, Icons.directions_car_rounded, AppColors.secondary),
                     ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      _buildStatCard('${stats['activeSubscriptions'] ?? 0}', l.subscriptions, Icons.card_membership_rounded, Colors.orange),
+                      const SizedBox(width: 12),
+                      _buildStatCard('${stats['activeDrivers'] ?? 0}', l.activeDrivers, Icons.person_pin_rounded, Colors.purple),
+                    ],
+                  ),
+                  const SizedBox(height: 28),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [AppColors.primary, AppColors.primaryDark],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          l.monthlyRevenue,
+                          style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'SAR ${(stats['monthlyRevenue'] as double? ?? 0).toStringAsFixed(0)}',
+                          style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(Icons.trending_up_rounded, color: Colors.greenAccent.shade200, size: 16),
+                            const SizedBox(width: 4),
+                            Text(
+                              l.fromLastMonth,
+                              style: TextStyle(color: Colors.greenAccent.shade200, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (_, __) => const Text('Error loading stats'),
             ),
 
             const SizedBox(height: 28),
 
             // Management sections
-            const Text(
-              'Management',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              l.management,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
 
             _buildManagementTile(
               context,
               icon: Icons.add_road_rounded,
-              title: 'Create Trip',
-              subtitle: 'Manually create and assign trips',
+              title: l.createTrip,
+              subtitle: l.manuallyCreateTrips,
               color: AppColors.primary,
               onTap: () => Navigator.pushNamed(context, '/admin/trips'),
             ),
             _buildManagementTile(
               context,
               icon: Icons.people_outline_rounded,
-              title: 'User Management',
-              subtitle: 'View and manage registered users',
+              title: l.userManagement,
+              subtitle: l.viewManageUsers,
               color: AppColors.secondary,
               onTap: () => Navigator.pushNamed(context, '/admin/users'),
             ),
             _buildManagementTile(
               context,
               icon: Icons.directions_car_filled_rounded,
-              title: 'Driver Management',
-              subtitle: 'Manage drivers and assignments',
+              title: l.driverManagement,
+              subtitle: l.manageDriversAssignments,
               color: Colors.purple,
               onTap: () => Navigator.pushNamed(context, '/admin/drivers'),
             ),
             _buildManagementTile(
               context,
               icon: Icons.card_membership_rounded,
-              title: 'Subscriptions',
-              subtitle: 'View active subscriptions',
+              title: l.subscriptions,
+              subtitle: l.viewActiveSubscriptions,
               color: Colors.orange,
               onTap: () {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: const Text('Subscriptions management'),
+                    content: Text(l.subscriptionsManagement),
                     backgroundColor: AppColors.primary,
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -151,8 +165,8 @@ class AdminDashboardScreen extends StatelessWidget {
             _buildManagementTile(
               context,
               icon: Icons.analytics_rounded,
-              title: 'Analytics',
-              subtitle: 'View detailed reports and charts',
+              title: l.analytics,
+              subtitle: l.viewDetailedReports,
               color: AppColors.info,
               onTap: () => Navigator.pushNamed(context, '/admin/analytics'),
             ),
@@ -160,17 +174,17 @@ class AdminDashboardScreen extends StatelessWidget {
             const SizedBox(height: 28),
 
             // Recent activity
-            const Text(
-              'Recent Activity',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            Text(
+              l.recentActivity,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
 
-            _buildActivityItem('New user registered', 'Ahmed K. signed up', '2 min ago', Icons.person_add_rounded, AppColors.secondary),
-            _buildActivityItem('Trip completed', 'Trip #A8F3 finished successfully', '15 min ago', Icons.check_circle_rounded, AppColors.tripCompleted),
-            _buildActivityItem('Subscription upgraded', 'Sara M. upgraded to Premium', '1 hr ago', Icons.upgrade_rounded, Colors.orange),
-            _buildActivityItem('Driver assigned', 'Mohammed A. assigned to Trip #B2C1', '2 hr ago', Icons.person_pin_rounded, AppColors.primary),
-            _buildActivityItem('Trip cancelled', 'Trip #C5D9 cancelled by user', '3 hr ago', Icons.cancel_rounded, AppColors.error),
+            _buildActivityItem(l.newUserRegistered, 'Ahmed K. signed up', '2 min ago', Icons.person_add_rounded, AppColors.secondary),
+            _buildActivityItem(l.tripCompleted, 'Trip #A8F3 finished successfully', '15 min ago', Icons.check_circle_rounded, AppColors.tripCompleted),
+            _buildActivityItem(l.subscriptionUpgraded, 'Sara M. upgraded to Premium', '1 hr ago', Icons.upgrade_rounded, Colors.orange),
+            _buildActivityItem(l.driverAssigned, 'Mohammed A. assigned to Trip #B2C1', '2 hr ago', Icons.person_pin_rounded, AppColors.primary),
+            _buildActivityItem(l.tripCancelled, 'Trip #C5D9 cancelled by user', '3 hr ago', Icons.cancel_rounded, AppColors.error),
 
             const SizedBox(height: 32),
           ],
@@ -270,6 +284,39 @@ class AdminDashboardScreen extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  void _showLogoutDialog(BuildContext context, WidgetRef ref) {
+    final l = AppLocalizations.of(context)!;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(l.logout),
+        content: Text(l.areYouSureLogout),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(l.cancel),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await ref.read(authServiceProvider).signOut();
+              if (context.mounted) {
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  '/login',
+                  (route) => false,
+                );
+              }
+            },
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: Text(l.logout),
+          ),
+        ],
       ),
     );
   }

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/enums/enums.dart';
+import '../../../core/enums/enum_l10n.dart';
 import '../../../data/models/trip_model.dart';
+import '../../../l10n/generated/app_localizations.dart';
 
 class NextTripCard extends StatefulWidget {
   final TripModel trip;
@@ -57,6 +59,7 @@ class _NextTripCardState extends State<NextTripCard>
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return AnimatedBuilder(
       animation: _pulseAnimation,
       builder: (context, child) {
@@ -106,7 +109,7 @@ class _NextTripCardState extends State<NextTripCard>
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        widget.trip.status.displayName,
+                        widget.trip.status.localizedName(l),
                         style: TextStyle(
                           color: _statusColor,
                           fontSize: 12,
@@ -188,13 +191,13 @@ class _NextTripCardState extends State<NextTripCard>
                   child: Column(
                     children: [
                       _buildLocationRow(
-                        title: 'Pickup',
+                        title: l.pickup,
                         address: widget.trip.pickupLocation.title,
                         subtitle: widget.trip.pickupLocation.address,
                       ),
                       const SizedBox(height: 20),
                       _buildLocationRow(
-                        title: 'Drop-off',
+                        title: l.dropoff,
                         address: widget.trip.dropoffLocation.title,
                         subtitle: widget.trip.dropoffLocation.address,
                       ),
@@ -242,7 +245,7 @@ class _NextTripCardState extends State<NextTripCard>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            widget.trip.driverName ?? 'Driver',
+                            widget.trip.driverName ?? l.driver,
                             style: const TextStyle(
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
@@ -314,7 +317,7 @@ class _NextTripCardState extends State<NextTripCard>
                   child: OutlinedButton.icon(
                     onPressed: () => _showCancelDialog(context),
                     icon: const Icon(Icons.close_rounded, size: 18),
-                    label: const Text('Cancel'),
+                    label: Text(l.cancel),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.error,
                       side: const BorderSide(color: AppColors.error),
@@ -337,7 +340,7 @@ class _NextTripCardState extends State<NextTripCard>
                       );
                     },
                     icon: const Icon(Icons.navigation_rounded, size: 18),
-                    label: const Text('Track Trip'),
+                    label: Text(l.trackTrip),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
@@ -357,30 +360,31 @@ class _NextTripCardState extends State<NextTripCard>
   }
 
   void _showCancelDialog(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Cancel Trip'),
-        content: const Text('Are you sure you want to cancel this trip?'),
+        title: Text(l.cancelTrip),
+        content: Text(l.cancelTripConfirm),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Keep Trip'),
+            child: Text(l.keepTrip),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: const Text('Trip cancelled'),
+                  content: Text(l.tripCancelled),
                   backgroundColor: AppColors.error,
                   behavior: SnackBarBehavior.floating,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
               );
             },
-            child: const Text('Cancel Trip', style: TextStyle(color: AppColors.error)),
+            child: Text(l.cancelTrip, style: const TextStyle(color: AppColors.error)),
           ),
         ],
       ),

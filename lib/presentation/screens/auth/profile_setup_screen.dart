@@ -8,6 +8,7 @@ import '../../../core/animations/staggered_animation.dart';
 import '../../../core/enums/enums.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/providers/providers.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../widgets/common/animated_button.dart';
 
 class ProfileSetupScreen extends ConsumerStatefulWidget {
@@ -20,7 +21,7 @@ class ProfileSetupScreen extends ConsumerStatefulWidget {
 class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _emergencyNameController = TextEditingController();
   final _emergencyPhoneController = TextEditingController();
 
@@ -31,7 +32,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _emailController.dispose();
+    _phoneController.dispose();
     _emergencyNameController.dispose();
     _emergencyPhoneController.dispose();
     super.dispose();
@@ -60,29 +61,23 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
     try {
       final authService = ref.read(authServiceProvider);
-
-      // Test mode: skip Firebase and go directly to home
-      if (authService.isTestMode) {
-        await Future.delayed(const Duration(milliseconds: 300));
-        if (mounted) {
-          Navigator.pushNamedAndRemoveUntil(
-            context,
-            '/home',
-            (route) => false,
-          );
-        }
-        return;
-      }
-
       final user = ref.read(currentUserProvider);
       if (user == null) throw Exception('User not authenticated');
+
+      // Upload profile image if selected
+      String? imageUrl;
+      if (_profileImage != null) {
+        final firestoreService = ref.read(firestoreServiceProvider);
+        imageUrl = await firestoreService.uploadProfileImage(user.uid, _profileImage!);
+      }
 
       // Create user model
       final userModel = UserModel(
         id: user.uid,
         name: _nameController.text.trim(),
-        email: _emailController.text.trim(),
-        phone: user.phoneNumber ?? '',
+        email: user.email ?? '',
+        phone: _phoneController.text.trim(),
+        profileImageUrl: imageUrl,
         emergencyContactName: _emergencyNameController.text.trim().isEmpty
             ? null
             : _emergencyNameController.text.trim(),
@@ -126,6 +121,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -205,8 +201,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
                       physics: const BouncingScrollPhysics(),
                       padding: const EdgeInsets.all(24),
                       child: _currentStep == 0
-                          ? _buildBasicInfoStep()
-                          : _buildEmergencyContactStep(),
+                          ? _buildBasicInfoStep(l)
+                          : _buildEmergencyContactStep(l),
                     ),
                   ),
                 ),
@@ -218,7 +214,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     );
   }
 
-  Widget _buildBasicInfoStep() {
+  Widget _buildBasicInfoStep(AppLocalizations l) {
     return StaggeredList(
       baseDelay: const Duration(milliseconds: 100),
       staggerDelay: const Duration(milliseconds: 80),
@@ -227,9 +223,9 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         const SizedBox(height: 16),
 
         // Title
-        const Text(
-          'Complete Your Profile',
-          style: TextStyle(
+        Text(
+          l.completeYourProfile,
+          style: const TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
@@ -240,7 +236,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         const SizedBox(height: 8),
 
         Text(
-          'Help us personalize your experience',
+          l.helpUsPersonalize,
           style: TextStyle(
             fontSize: 16,
             color: AppColors.textSecondary,
@@ -307,15 +303,15 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         // Name Field
         _buildTextField(
           controller: _nameController,
-          label: 'Full Name',
-          hint: 'Enter your full name',
+          label: l.fullName,
+          hint: l.enterYourFullName,
           icon: Icons.person_outline_rounded,
           validator: (value) {
             if (value == null || value.isEmpty) {
-              return 'Please enter your name';
+              return l.pleaseEnterName;
             }
             if (value.length < 2) {
-              return 'Name must be at least 2 characters';
+              return l.nameMinLength;
             }
             return null;
           },
@@ -323,19 +319,19 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
         const SizedBox(height: 16),
 
-        // Email Field
+        // Phone Number Field
         _buildTextField(
-          controller: _emailController,
-          label: 'Email Address',
-          hint: 'Enter your email',
-          icon: Icons.email_outlined,
-          keyboardType: TextInputType.emailAddress,
+          controller: _phoneController,
+          label: l.phoneNumber,
+          hint: '+966 5XX XXX XXXX',
+          icon: Icons.phone_outlined,
+          keyboardType: TextInputType.phone,
           validator: (value) {
             if (value == null || value.isEmpty) {
-              return 'Please enter your email';
+              return l.pleaseEnterPhoneNumber;
             }
-            if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-              return 'Please enter a valid email';
+            if (value.replaceAll(RegExp(r'[^0-9]'), '').length < 9) {
+              return l.pleaseEnterValidPhone;
             }
             return null;
           },
@@ -345,7 +341,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
         // Continue Button
         AnimatedButton(
-          text: 'Continue',
+          text: l.continueBtn,
           onPressed: () {
             if (_formKey.currentState!.validate()) {
               setState(() => _currentStep = 1);
@@ -358,7 +354,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
     );
   }
 
-  Widget _buildEmergencyContactStep() {
+  Widget _buildEmergencyContactStep(AppLocalizations l) {
     return StaggeredList(
       baseDelay: const Duration(milliseconds: 100),
       staggerDelay: const Duration(milliseconds: 80),
@@ -387,9 +383,9 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         const SizedBox(height: 24),
 
         // Title
-        const Text(
-          'Emergency Contact',
-          style: TextStyle(
+        Text(
+          l.emergencyContact,
+          style: const TextStyle(
             fontSize: 28,
             fontWeight: FontWeight.bold,
             color: AppColors.textPrimary,
@@ -400,7 +396,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         const SizedBox(height: 8),
 
         Text(
-          'Add someone we can contact in case of emergency',
+          l.addEmergencyDesc,
           style: TextStyle(
             fontSize: 16,
             color: AppColors.textSecondary,
@@ -413,8 +409,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         // Emergency Contact Name
         _buildTextField(
           controller: _emergencyNameController,
-          label: 'Contact Name',
-          hint: 'Enter contact name',
+          label: l.contactName,
+          hint: l.enterContactName,
           icon: Icons.person_outline_rounded,
         ),
 
@@ -423,8 +419,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         // Emergency Contact Phone
         _buildTextField(
           controller: _emergencyPhoneController,
-          label: 'Contact Phone',
-          hint: 'Enter phone number',
+          label: l.contactPhone,
+          hint: l.enterPhoneNumber,
           icon: Icons.phone_outlined,
           keyboardType: TextInputType.phone,
         ),
@@ -432,7 +428,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         const SizedBox(height: 8),
 
         Text(
-          'This is optional but recommended for your safety',
+          l.optionalRecommended,
           style: TextStyle(
             fontSize: 12,
             color: AppColors.textHint,
@@ -443,7 +439,7 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
 
         // Complete Button
         AnimatedButton(
-          text: 'Complete Setup',
+          text: l.completeSetup,
           onPressed: _isLoading ? null : _saveProfile,
           isLoading: _isLoading,
           width: double.infinity,
@@ -455,8 +451,8 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
         // Skip button
         TextButton(
           onPressed: _isLoading ? null : _saveProfile,
-          child: const Text(
-            'Skip for now',
+          child: Text(
+            l.skipForNow,
             style: TextStyle(
               color: AppColors.textSecondary,
               fontSize: 14,
